@@ -33,6 +33,30 @@ def test_parse_requirements_skips_blank_and_flags():
     assert {d.name for d in deps} == {"flask"}
 
 
+def test_parse_pyproject_toml_dependencies():
+    toml = """
+    [project]
+    dependencies = [
+      "flask==2.0.0",
+      "requests>=2.25",
+      "pandas; python_version < '3.11'",
+      "# ignored comment",
+    ]
+    """
+    deps = checker.parse_pyproject_toml(toml)
+    assert {d.name for d in deps} == {"flask", "requests", "pandas"}
+    flask = next(d for d in deps if d.name == "flask")
+    assert flask.pinned and flask.version == "2.0.0"
+    requests = next(d for d in deps if d.name == "requests")
+    assert not requests.pinned and requests.version == "2.25"
+    pandas = next(d for d in deps if d.name == "pandas")
+    assert not pandas.pinned and pandas.version is None
+
+
+def test_parse_pyproject_toml_invalid_returns_empty():
+    assert checker.parse_pyproject_toml("[not a valid toml") == []
+
+
 def test_parse_package_json():
     pkg = json.dumps({
         "dependencies": {"lodash": "4.17.20", "axios": "^0.21.0"},
@@ -88,6 +112,18 @@ def test_run_directory(tmp_path):
     result = checker.run(str(tmp_path))
     assert result["dependency_count"] == 1
     assert result["vulnerabilities"]
+
+
+def test_run_directory_with_pyproject_toml(tmp_path):
+    (tmp_path / "pyproject.toml").write_text(
+        """
+        [project]
+        dependencies = ["flask==0.12.2"]
+        """
+    )
+    result = checker.run(str(tmp_path))
+    assert result["dependency_count"] == 1
+    assert len(result["vulnerabilities"]) == 1
 
 
 def test_cli_exit_code_vuln(tmp_path):
