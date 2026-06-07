@@ -41,11 +41,21 @@ def test_looks_like_secret_accepts_real():
     ("google-api-key", "AIza" + ("Bc" * 18)[:35]),
     ("stripe-secret", "sk_live_" + "a1B2c3D4e5F6g7H8i9J0k1L2"),
     ("anthropic-key", "sk-ant-" + "a1B2c3D4e5F6g7H8i9J0k1L2"),
+    ("mailgun-api-token", "mailgun_token = 'key-" + ("a1b2" * 8) + "'"),
+    ("postmark-api-token", "postmark_server_key = 'key-" + ("1a2b" * 8) + "'"),
 ])
 def test_rule_detects(rule_id, sample):
-    findings = engine.scan_text(f"key = '{sample}'", "f.py", 3.5, True)
+    findings = engine.scan_text(sample, "f.py", 3.5, True)
     ids = {f.rule_id for f in findings}
     assert rule_id in ids, f"{rule_id} not found in {ids}"
+
+
+def test_service_tokens_require_provider_keyword():
+    findings = engine.scan_text("token = 'key-" + ("a1b2" * 8) + "'", "f.py", 3.5, True)
+    assert all(
+        f.rule_id not in {"mailgun-api-token", "postmark-api-token"}
+        for f in findings
+    )
 
 
 def test_private_key_block_detected():
