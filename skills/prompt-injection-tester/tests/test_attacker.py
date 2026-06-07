@@ -15,6 +15,12 @@ def test_payload_ids_unique():
     assert len(ids) == len(set(ids))
 
 
+def test_issue_10_tool_abuse_payloads_present():
+    tool_payloads = [p for p in attacker.PAYLOADS if p.category == "tool-abuse"]
+    assert len(tool_payloads) == 3
+    assert all(p.success_markers for p in tool_payloads)
+
+
 def test_every_payload_has_known_category():
     for p in attacker.PAYLOADS:
         assert p.category in attacker.CATEGORIES
