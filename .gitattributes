@@ -1,0 +1,6 @@
+# Normalize line endings: LF in the repo, auto on checkout.
+* text=auto eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.ini text eol=lf

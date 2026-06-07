@@ -1,0 +1,145 @@
+import os
+import sys
+import textwrap
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import engine
+
+
+def test_entropy_empty_is_zero():
+    assert engine.shannon_entropy("") == 0.0
+
+
+def test_entropy_uniform_is_low():
+    assert engine.shannon_entropy("aaaaaaaa") == 0.0
+
+
+def test_entropy_random_is_high():
+    rand = "f3Kd9Lm2Qx8Zp1Rt7Vw4Bn6Cs0Hj5"
+    assert engine.shannon_entropy(rand) > 3.5
+
+
+def test_looks_like_secret_rejects_placeholder():
+    assert not engine.looks_like_secret("your_api_key_here", 3.5)
+
+
+def test_looks_like_secret_rejects_short():
+    assert not engine.looks_like_secret("abc123", 3.5)
+
+
+def test_looks_like_secret_accepts_real():
+    assert engine.looks_like_secret("f3Kd9Lm2Qx8Zp1Rt7Vw4Bn6", 3.0)
+
+
+@pytest.mark.parametrize("rule_id,sample", [
+    ("aws-access-key-id", "AKIAIOSFODNN7EXAMPLE"),
+    ("github-pat", "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"),
+    ("slack-token", "xox" + "b-123456789012-abcdefghijklmnopqrstuvwx"),
+    ("google-api-key", "AIza" + ("Bc" * 18)[:35]),
+    ("stripe-secret", "sk_live_" + "a1B2c3D4e5F6g7H8i9J0k1L2"),
+    ("anthropic-key", "sk-ant-" + "a1B2c3D4e5F6g7H8i9J0k1L2"),
+])
+def test_rule_detects(rule_id, sample):
+    findings = engine.scan_text(f"key = '{sample}'", "f.py", 3.5, True)
+    ids = {f.rule_id for f in findings}
+    assert rule_id in ids, f"{rule_id} not found in {ids}"
+
+
+def test_private_key_block_detected():
+    text = "-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----"
+    findings = engine.scan_text(text, "id_rsa", 3.5, True)
+    assert any(f.rule_id == "private-key" for f in findings)
+
+
+def test_basic_auth_url_detected():
+    text = "db = 'postgres://admin:s3cr3tP4ss@db.internal:5432/app'"
+    findings = engine.scan_text(text, "config.py", 3.5, True)
+    assert any(f.rule_id == "basic-auth-url" for f in findings)
+
+
+def test_generic_password_detected():
+    text = "password = 'Sup3rH4rdT0Gu3ss!'"
+    findings = engine.scan_text(text, "settings.py", 3.0, True)
+    assert any(f.rule_id == "generic-password" for f in findings)
+
+
+def test_placeholder_not_flagged():
+    text = textwrap.dedent("""
+        api_key = "your_api_key_here"
+        password = "changeme"
+        token = "<YOUR_TOKEN>"
+        secret = "${SECRET_FROM_ENV}"
+    """)
+    findings = engine.scan_text(text, "readme_example.py", 3.5, True)
+    assert findings == [], [f.to_dict() for f in findings]
+
+
+def test_low_entropy_generic_not_flagged():
+    text = 'secret = "aaaaaaaaaaaaaaaaaaaa"'
+    findings = engine.scan_text(text, "f.py", 3.5, True)
+    assert not any(f.rule_id == "generic-secret" for f in findings)
+
+
+def test_clean_code_has_no_findings():
+    text = "def add(a, b):\n    return a + b\n"
+    findings = engine.scan_text(text, "math.py", 3.5, True)
+    assert findings == []
+
+
+def test_secret_is_redacted():
+    secret = "AKIAIOSFODNN7EXAMPLE"
+    findings = engine.scan_text(f"k='{secret}'", "f.py", 3.5, True)
+    assert findings
+    for f in findings:
+        assert secret not in f.secret
+
+
+def test_findings_sorted_by_severity():
+    text = textwrap.dedent("""
+        jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        key = "-----BEGIN PRIVATE KEY-----"
+    """)
+    findings = engine.scan_text(text, "f.py", 3.5, True)
+    sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    ranks = [sev_rank[f.severity] for f in findings]
+    findings_sorted = sorted(findings, key=lambda f: sev_rank[f.severity])
+    assert [sev_rank[f.severity] for f in findings_sorted] == sorted(ranks)
+
+
+def test_scan_paths_skips_binary_and_finds_secret(tmp_path):
+    (tmp_path / "app.py").write_text("token = 'ghp_" + "x" * 36 + "'")
+    (tmp_path / "image.png").write_bytes(b"\x89PNG\x00\x00secretAKIAIOSFODNN7EXAMPLE")
+    sub = tmp_path / "node_modules"
+    sub.mkdir()
+    (sub / "lib.js").write_text("var k='AKIAIOSFODNN7EXAMPLE'")
+
+    findings = engine.scan_paths([str(tmp_path)])
+    paths = {os.path.basename(f.path) for f in findings}
+    assert "app.py" in paths
+    assert "image.png" not in paths
+    assert "lib.js" not in paths
+
+
+def test_cli_exit_code_clean(tmp_path, capsys):
+    (tmp_path / "ok.py").write_text("x = 1\n")
+    rc = engine.main([str(tmp_path)])
+    assert rc == 0
+
+
+def test_cli_exit_code_findings(tmp_path):
+    (tmp_path / "bad.py").write_text("k = 'AKIAIOSFODNN7EXAMPLE'\n")
+    rc = engine.main([str(tmp_path)])
+    assert rc == 1
+
+
+def test_cli_json_output(tmp_path, capsys):
+    (tmp_path / "bad.py").write_text("k = 'AKIAIOSFODNN7EXAMPLE'\n")
+    engine.main([str(tmp_path), "--json"])
+    out = capsys.readouterr().out
+    import json
+    data = json.loads(out)
+    assert isinstance(data, list) and data
+    assert data[0]["rule_id"]

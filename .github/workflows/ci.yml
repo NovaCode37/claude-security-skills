@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test (py${{ matrix.python-version }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Run test suite
+        run: pytest skills/ -q
+
+  dogfood:
+    name: dogfood (skills scan themselves)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: sast-lite scans the shipped engines (no high/critical allowed)
+        # Scans engine code only; test suites intentionally contain fake
+        # secrets/insecure snippets as fixtures, so they're excluded here.
+        run: |
+          python skills/sast-lite/analyzer.py \
+            skills/secret-scanner/engine.py \
+            skills/sast-lite/analyzer.py \
+            skills/prompt-injection-tester/attacker.py \
+            skills/http-sec-audit/audit.py \
+            skills/jwt-inspector/inspector.py \
+            skills/dependency-check/checker.py \
+            --min-severity high
+
+      - name: prompt-injection-tester self-check
+        run: |
+          python skills/prompt-injection-tester/attacker.py --demo --hardened
+
+  lint:
+    name: byte-compile all engines
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile-check
+        run: python -m compileall -q skills/
