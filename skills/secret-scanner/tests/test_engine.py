@@ -112,6 +112,11 @@ def test_findings_sorted_by_severity():
 def test_scan_paths_skips_binary_and_finds_secret(tmp_path):
     (tmp_path / "app.py").write_text("token = 'ghp_" + "x" * 36 + "'")
     (tmp_path / "image.png").write_bytes(b"\x89PNG\x00\x00secretAKIAIOSFODNN7EXAMPLE")
+    (tmp_path / "cover.webp").write_bytes(b"\x00secretAKIAIOSFODNN7EXAMPLE")
+    (tmp_path / "movie.mkv").write_bytes(b"\x1A\x45\xDF\xA3secretAKIAIOSFODNN7EXAMPLE")
+    (tmp_path / "audio.flac").write_bytes(b"fLaCsecretAKIAIOSFODNN7EXAMPLE")
+    (tmp_path / "icon.heic").write_bytes(b"\x00\x00\x00\x00secretAKIAIOSFODNN7EXAMPLE")
+    (tmp_path / "vector.avif").write_bytes(b"\x00\x00\x00\x18avifsecretAKIAIOSFODNN7EXAMPLE")
     sub = tmp_path / "node_modules"
     sub.mkdir()
     (sub / "lib.js").write_text("var k='AKIAIOSFODNN7EXAMPLE'")
@@ -120,6 +125,11 @@ def test_scan_paths_skips_binary_and_finds_secret(tmp_path):
     paths = {os.path.basename(f.path) for f in findings}
     assert "app.py" in paths
     assert "image.png" not in paths
+    assert "cover.webp" not in paths
+    assert "movie.mkv" not in paths
+    assert "audio.flac" not in paths
+    assert "icon.heic" not in paths
+    assert "vector.avif" not in paths
     assert "lib.js" not in paths
 
 
