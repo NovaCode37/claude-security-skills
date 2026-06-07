@@ -78,6 +78,16 @@ def test_crack_weak_secret():
     assert any(i["id"] == "weak-secret" for i in result["issues"])
 
 
+@pytest.mark.parametrize("secret", ["password123", "P@ssw0rd", "welcome"])
+def test_crack_extended_weak_secret_candidates(secret):
+    token = inspector.sign_hs256({"alg": "HS256"},
+                                 {"sub": "1", "exp": int(time.time()) + 60},
+                                 secret)
+    result = inspector.inspect(token)
+    assert result["cracked_secret"] == secret
+    assert any(issue["id"] == "weak-secret" for issue in result["issues"])
+
+
 def test_strong_secret_not_cracked():
     token = inspector.sign_hs256(
         {"alg": "HS256"}, {"sub": "1", "exp": int(time.time()) + 60},
