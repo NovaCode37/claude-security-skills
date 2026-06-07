@@ -24,6 +24,8 @@ def test_entropy_random_is_high():
 
 def test_looks_like_secret_rejects_placeholder():
     assert not engine.looks_like_secret("your_api_key_here", 3.5)
+    assert not engine.looks_like_secret("yourtoken-abc123", 3.5)
+    assert not engine.looks_like_secret("notreal_value", 3.5)
 
 
 def test_looks_like_secret_rejects_short():

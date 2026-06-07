@@ -29,7 +29,8 @@ MAX_LINE_LEN = 4096
 
 PLACEHOLDER_RE = re.compile(
     r"(?i)(example|sample|dummy|placeholder|your[_-]?key|xxx+|00000+|"
-    r"123456|changeme|redacted|test[_-]?key|fake|<[^>]+>|\$\{[^}]+\})"
+    r"123456|changeme|redacted|test[_-]?key|testvalue|donotuse|"
+    r"mykey|yourtoken|notreal|fake|<[^>]+>|\$\{[^}]+\})"
 )
 
 
