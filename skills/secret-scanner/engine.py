@@ -86,6 +86,12 @@ RULES: list[Rule] = [
          _c(r"\b(npm_[A-Za-z0-9]{36})\b"), 1),
     Rule("pypi-token", "PyPI upload token", "critical",
          _c(r"\b(pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,})\b"), 1),
+    Rule("mailgun-api-token", "Mailgun API token", "high",
+         _c(r"(?i)^(?=.*mailgun).*\b(key-[A-Fa-f0-9]{32})\b"), 1,
+         keywords=("mailgun",)),
+    Rule("postmark-api-token", "Postmark server token", "high",
+         _c(r"(?i)^(?=.*postmark).*\b(key-[A-Fa-f0-9]{32})\b"), 1,
+         keywords=("postmark",)),
     Rule("jwt", "JSON Web Token", "low",
          _c(r"\b(eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})\b"), 1),
     Rule("private-key", "Private key block", "critical",
@@ -106,6 +112,7 @@ NO_ENTROPY_RULES = {
     "anthropic-key", "openai-key", "slack-token", "slack-webhook",
     "aws-access-key-id", "google-api-key", "sendgrid-key", "twilio-key",
     "npm-token", "pypi-token", "basic-auth-url", "jwt",
+    "mailgun-api-token", "postmark-api-token",
 }
 
 
