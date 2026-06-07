@@ -131,6 +131,7 @@ DEFAULT_WEAK_SECRETS = [
     "secret", "password", "123456", "changeme", "admin", "jwt", "token",
     "secretkey", "supersecret", "key", "your-256-bit-secret", "test",
     "qwerty", "letmein", "default", "root", "private", "s3cr3t",
+    "password123", "secret123", "jwtsecret", "mysecret", "P@ssw0rd", "welcome",
 ]
 
 _HASH_BY_ALG = {"HS256": hashlib.sha256, "HS384": hashlib.sha384,
