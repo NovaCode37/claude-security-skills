@@ -1,0 +1,33 @@
+name: 🧩 New skill proposal
+description: Propose a brand-new security skill for the toolkit.
+title: "[skill] <name>"
+labels: ["new skill", "enhancement"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Proposed skill name
+      placeholder: "cors-auditor"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What security problem does it solve?
+      description: Who needs it and when would Claude invoke it?
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: How would the engine work?
+      description: Inputs, checks, output. Remember the rules — stdlib only, offline-first, --json, exit codes 0/1/2.
+    validations:
+      required: true
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Conventions
+      options:
+        - label: I've read CONTRIBUTING.md and will keep it dependency-free + tested.
+          required: true

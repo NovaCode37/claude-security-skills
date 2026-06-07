@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & ideas
+    url: https://github.com/NovaCode37/claude-security-skills/discussions
+    about: Ask questions, propose new skills, or show what you built.
+  - name: 🔐 Report a security issue
+    url: https://github.com/NovaCode37/claude-security-skills/security/advisories/new
+    about: Privately report a vulnerability in a skill engine.

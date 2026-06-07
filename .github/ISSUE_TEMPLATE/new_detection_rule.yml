@@ -1,0 +1,44 @@
+name: ➕ New detection rule
+description: Propose a new secret pattern, SAST check, advisory, header check, or injection payload.
+title: "[rule] <what to detect>"
+labels: ["enhancement", "good first issue"]
+body:
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Which skill should get the rule?
+      options:
+        - secret-scanner (new secret pattern)
+        - sast-lite (new code check)
+        - http-sec-audit (new header/cookie check)
+        - jwt-inspector (new JWT check)
+        - dependency-check (new advisory)
+        - prompt-injection-tester (new payload)
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What should it detect, and why does it matter?
+      description: Describe the pattern/vulnerability and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example that SHOULD match (true positive)
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: counter
+    attributes:
+      label: Example that should NOT match (true negative)
+      render: text
+    validations:
+      required: false
+  - type: input
+    id: ref
+    attributes:
+      label: Reference (CWE / CVE / vendor docs)
+      placeholder: "CWE-89, https://..."

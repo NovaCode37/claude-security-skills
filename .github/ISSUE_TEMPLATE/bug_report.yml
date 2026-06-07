@@ -1,0 +1,42 @@
+name: 🐞 Bug report
+description: A skill produced a wrong result, crashed, or missed something it should catch.
+title: "[bug] <short description>"
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Which skill?
+      options:
+        - secret-scanner
+        - sast-lite
+        - prompt-injection-tester
+        - http-sec-audit
+        - jwt-inspector
+        - dependency-check
+        - other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did the skill do, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The exact command and a small input that triggers it.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: OS + `python --version`
+      placeholder: "Windows 11, Python 3.11"
+    validations:
+      required: false
