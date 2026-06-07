@@ -20,7 +20,8 @@ BINARY_EXT = {
     ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".pdf", ".zip",
     ".gz", ".tar", ".7z", ".rar", ".exe", ".dll", ".so", ".dylib",
     ".class", ".jar", ".woff", ".woff2", ".ttf", ".eot", ".mp3", ".mp4",
-    ".mov", ".avi", ".pyc", ".o", ".a", ".wasm",
+    ".mov", ".avi", ".mkv", ".flac", ".pyc", ".o", ".a", ".wasm",
+    ".webp", ".heic", ".avif",
 }
 
 MAX_FILE_BYTES = 5 * 1024 * 1024
