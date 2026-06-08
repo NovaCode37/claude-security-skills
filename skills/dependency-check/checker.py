@@ -87,21 +87,62 @@ class Dep:
     pinned: bool
 
 
+def _parse_dependency_token(text: str) -> tuple[str | None, str | None, bool] | None:
+    token = text.split(";", 1)[0].strip()
+    token = token.split("#", 1)[0].strip()
+    if not token:
+        return None
+    m = re.match(
+        r"^([A-Za-z0-9_.\-]+(?:\[[^\]]+\])?)\s*(==|>=|<=|~=|>|<|!=)?\s*([^\s;,]+)?",
+        token)
+    if not m:
+        return None
+    name = m.group(1).split("[", 1)[0].lower()
+    op, ver = m.group(2), m.group(3)
+    pinned = op == "==" and bool(ver)
+    version = ver if pinned or op else (ver if op and ver else None)
+    return name, version, pinned
+
+
 def parse_requirements(text: str) -> list[Dep]:
     deps: list[Dep] = []
     for line in text.splitlines():
         line = line.split("#", 1)[0].strip()
         if not line or line.startswith("-"):
             continue
-        m = re.match(r"^([A-Za-z0-9_.\-]+)\s*(==|>=|<=|~=|>|<|!=)?\s*([^\s;,]+)?",
-                     line)
-        if not m:
+        parsed = _parse_dependency_token(line)
+        if not parsed:
             continue
-        name = m.group(1).lower()
-        op, ver = m.group(2), m.group(3)
-        pinned = op == "==" and bool(ver)
-        deps.append(Dep("pypi", name, ver if pinned else (ver if op else None),
-                        line, pinned))
+        name, version, pinned = parsed
+        deps.append(Dep("pypi", name, version, line, pinned))
+    return deps
+
+
+def parse_pyproject_toml(text: str) -> list[Dep]:
+    try:
+        import tomllib
+    except Exception:
+        return []
+
+    try:
+        data = tomllib.loads(text)
+    except Exception:
+        return []
+
+    deps: list[Dep] = []
+    project = data.get("project") or {}
+    project_deps = project.get("dependencies") or []
+    if not isinstance(project_deps, list):
+        return []
+
+    for dep in project_deps:
+        if not isinstance(dep, str):
+            continue
+        parsed = _parse_dependency_token(dep)
+        if not parsed:
+            continue
+        name, version, pinned = parsed
+        deps.append(Dep("pypi", name, version, dep, pinned))
     return deps
 
 
@@ -190,6 +231,8 @@ def parse_file(path: str) -> list[Dep]:
     base = os.path.basename(path).lower()
     if base == "package.json":
         return parse_package_json(text)
+    if base == "pyproject.toml":
+        return parse_pyproject_toml(text)
     if base.endswith(".txt") or "requirements" in base:
         return parse_requirements(text)
     return parse_requirements(text)
@@ -199,7 +242,7 @@ def discover(path: str) -> list[str]:
     if os.path.isfile(path):
         return [path]
     found = []
-    for name in ("requirements.txt", "package.json"):
+    for name in ("requirements.txt", "package.json", "pyproject.toml"):
         candidate = os.path.join(path, name)
         if os.path.isfile(candidate):
             found.append(candidate)
