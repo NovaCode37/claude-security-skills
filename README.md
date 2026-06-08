@@ -16,7 +16,7 @@ Find leaked secrets · run lightweight SAST · red-team your LLM against prompt 
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-orange)](CONTRIBUTING.md)
 [![good first issues](https://img.shields.io/badge/good%20first%20issues-open-purple)](docs/GOOD_FIRST_ISSUES.md)
 
-[**Ver en español**](README.es.md)
+[**Ver en español**](README.es.md) · [**Читать на русском**](README.ru.md)
 
 [**Install**](#install) · [**Skills**](#the-skills) · [**Usage**](#usage) · [**How it works**](#how-it-works) · [**Contributing**](CONTRIBUTING.md)
 
