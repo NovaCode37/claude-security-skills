@@ -11,7 +11,7 @@
 Encuentra secretos filtrados, ejecuta SAST ligero, prueba prompt injection en LLM, y audita encabezados HTTP, JWT y dependencias desde solicitudes en lenguaje natural dentro de Claude Code.
 
 [![CI](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-114%20passing-brightgreen)](#tests)
+[![Tests](https://img.shields.io/badge/tests-124%20passing-brightgreen)](#tests)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![Dependencias en tiempo de ejecución](https://img.shields.io/badge/runtime%20deps-0-success)](#design-principles)
 [![License: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)

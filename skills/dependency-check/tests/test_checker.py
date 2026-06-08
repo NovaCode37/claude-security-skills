@@ -2,9 +2,16 @@ import json
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import checker
+
+requires_tomllib = pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="tomllib is stdlib only on Python 3.11+",
+)
 
 
 def test_cmp():
@@ -33,6 +40,7 @@ def test_parse_requirements_skips_blank_and_flags():
     assert {d.name for d in deps} == {"flask"}
 
 
+@requires_tomllib
 def test_parse_pyproject_toml_dependencies():
     toml = """
     [project]
@@ -114,6 +122,7 @@ def test_run_directory(tmp_path):
     assert result["vulnerabilities"]
 
 
+@requires_tomllib
 def test_run_directory_with_pyproject_toml(tmp_path):
     (tmp_path / "pyproject.toml").write_text(
         """

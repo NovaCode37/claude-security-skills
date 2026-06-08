@@ -9,7 +9,7 @@
 Find leaked secrets · run lightweight SAST · red-team your LLM against prompt injection · audit HTTP headers, JWTs & dependencies — all from plain-English requests inside Claude Code.
 
 [![CI](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-114%20passing-brightgreen)](#tests)
+[![Tests](https://img.shields.io/badge/tests-124%20passing-brightgreen)](#tests)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![Zero deps](https://img.shields.io/badge/runtime%20deps-0-success)](#design-principles)
 [![License: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)
@@ -139,7 +139,7 @@ python skills/dependency-check/checker.py requirements.txt
 
 ```bash
 pip install pytest
-pytest skills/ -q          # 114 tests, runs in < 1s
+pytest skills/ -q          # 124 tests, runs in < 1s
 ```
 
 ## Design principles

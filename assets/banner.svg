@@ -75,6 +75,6 @@
   <!-- right-side meta -->
   <g font-family="'JetBrains Mono','Consolas',monospace" font-size="16" fill="#5f7397">
     <text x="1180" y="40" text-anchor="end">$ stdlib-only</text>
-    <text x="1180" y="64" text-anchor="end">$ 114 tests · CI green</text>
+    <text x="1180" y="64" text-anchor="end">$ 124 tests · CI green</text>
   </g>
 </svg>
