@@ -1,9 +1,3 @@
-<div align="center">
-
-<img src="assets/banner.svg" alt="Claude Security Skills" width="100%">
-
-<br/>
-
 **Production-ready [Claude Code](https://claude.com/claude-code) skills for offensive & defensive security.**
 
 Find leaked secrets · run lightweight SAST · red-team your LLM against prompt injection · audit HTTP headers, JWTs & dependencies — all from plain-English requests inside Claude Code.
