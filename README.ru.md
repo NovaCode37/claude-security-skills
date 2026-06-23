@@ -2,10 +2,6 @@
 
 <div align="center">
 
-<img src="assets/banner.svg" alt="Claude Security Skills" width="100%">
-
-<br/>
-
 **Готовые к продакшену скиллы [Claude Code](https://claude.com/claude-code) для наступательной и оборонительной безопасности.**
 
 Находите утёкшие секреты, запускайте лёгкий SAST, тестируйте свой LLM на prompt injection, проверяйте HTTP-заголовки, JWT и зависимости — всё обычными запросами на естественном языке внутри Claude Code.
@@ -27,7 +23,7 @@
 
 ## Что это?
 
-[Agent **Skills**](https://docs.claude.com/en/docs/claude-code/skills) позволяют Claude Code подгружать специализированные возможности по требованию. Этот репозиторий собирает шесть скиллов по безопасности. После установки просто попросите Claude:
+[Agent **Skills**](https://docs.claude.com/en/docs/claude-code/skills) позволяют Claude Code подгружать специализированные возможности по требованию. Этот репозиторий собирает восемь скиллов по безопасности. После установки просто попросите Claude обычным языком:
 
 > 💬 *«Просканируй этот репозиторий на закоммиченные секреты перед публикацией.»*
 > 💬 *«Прогони мой чат-бот на prompt injection и дай оценку устойчивости.»*
@@ -60,6 +56,8 @@ flowchart LR
 | [**http-sec-audit**](skills/http-sec-audit) | Аудит HTTP security-заголовков и флагов cookie (CSP, HSTS, SameSite, …) с конкретными фиксами | urllib + чистое ядро |
 | [**jwt-inspector**](skills/jwt-inspector) | Декодирует и аудитит JWT (alg=none, слабый expiry, гигиена claims) и офлайн подбирает слабые HMAC-секреты | HMAC + проверки |
 | [**dependency-check**](skills/dependency-check) | Отмечает уязвимые и незапиненные зависимости в `requirements.txt` / `package.json` / `pyproject.toml`, офлайн-база + опционально OSV.dev | Сопоставление версий |
+| [**dockerfile-scan**](skills/dockerfile-scan) | Ловит небезопасные паттерны в Dockerfile: запуск от root, базовый образ `:latest`, `curl \| sh`, удалённый `ADD`, зашитые секреты | Парсер Dockerfile |
+| [**cors-auditor**](skills/cors-auditor) | Аудит конфигурации CORS: wildcard с credentials, отражённый Origin, `null`-origin, слишком широкие методы | Анализатор заголовков |
 
 Каждый скилл **самодостаточен**, **покрыт CI** и завершается с ненулевым кодом при находках — встраивается прямо в пайплайн.
 

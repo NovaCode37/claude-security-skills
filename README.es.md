@@ -2,16 +2,12 @@
 
 <div align="center">
 
-<img src="assets/banner.svg" alt="Claude Security Skills" width="100%">
-
-<br/>
-
 **Habilidades de Claude Code [Claude Code](https://claude.com/claude-code) listas para producción para seguridad ofensiva y defensiva.**
 
 Encuentra secretos filtrados, ejecuta SAST ligero, prueba prompt injection en LLM, y audita encabezados HTTP, JWT y dependencias desde solicitudes en lenguaje natural dentro de Claude Code.
 
 [![CI](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-124%20passing-brightgreen)](#tests)
+[![Tests](https://img.shields.io/badge/tests-158%20passing-brightgreen)](#tests)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![Dependencias en tiempo de ejecución](https://img.shields.io/badge/runtime%20deps-0-success)](#design-principles)
 [![License: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)
@@ -44,7 +40,9 @@ Claude selecciona la habilidad correcta, ejecuta el motor y resume los resultado
 | [**prompt-injection-tester**](skills/prompt-injection-tester) | Prueba tu LLM con payloads clasificados y marcadores de éxito, devuelve resiliencia 0–100 | Harness canario |
 | [**http-sec-audit**](skills/http-sec-audit) | Audita encabezados de seguridad HTTP y cookies (CSP, HSTS, SameSite, etc.) con recomendaciones | urllib + lógica de núcleo |
 | [**jwt-inspector**](skills/jwt-inspector) | Decodifica y audita JWT (alg=none, expiración débil, higiene de claims) y fuerza secretos HMAC débiles | HMAC + reglas |
-| [**dependency-check**](skills/dependency-check) | Detecta dependencias vulnerables/no fijadas en `requirements.txt` / `package.json` | Analizador de versiones |
+| [**dependency-check**](skills/dependency-check) | Detecta dependencias vulnerables/no fijadas en `requirements.txt` / `package.json` / `pyproject.toml` | Analizador de versiones |
+| [**dockerfile-scan**](skills/dockerfile-scan) | Detecta patrones inseguros en Dockerfile: ejecución como root, imagen base `:latest`, `curl \| sh`, `ADD` remoto, secretos incrustados | Analizador de Dockerfile |
+| [**cors-auditor**](skills/cors-auditor) | Audita la configuración CORS: comodín con credenciales, Origin reflejado, origen `null`, métodos demasiado amplios | Analizador de cabeceras |
 
 ## Uso
 
