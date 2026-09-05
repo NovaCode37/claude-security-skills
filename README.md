@@ -36,15 +36,25 @@ finds something — so it also works as a CI step.
 
 ## Install
 
-Copy the skills into your project's `.claude/skills/` directory:
+As a plugin, from inside Claude Code:
+
+```
+/plugin marketplace add NovaCode37/claude-security-skills
+/plugin install claude-security-skills
+```
+
+All eight skills arrive together and update with the marketplace.
+
+Or copy them in by hand, which works the same way:
 
 ```bash
 git clone https://github.com/NovaCode37/claude-security-skills.git
 cp -r claude-security-skills/skills/* .claude/skills/
 ```
 
-Or into `~/.claude/skills/` to have them in every project. Restart Claude Code
-and it discovers them from each `SKILL.md`. There's nothing else to install.
+Use `~/.claude/skills/` instead to have them in every project. Restart Claude
+Code and it discovers them from each `SKILL.md`. There's nothing else to
+install either way.
 
 ## Usage
 

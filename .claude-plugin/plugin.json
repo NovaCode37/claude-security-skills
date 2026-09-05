@@ -1,0 +1,21 @@
+{
+  "name": "claude-security-skills",
+  "description": "Security skills for Claude Code: secret scanning, Python SAST, prompt-injection testing, and HTTP, JWT, Dockerfile, CORS and dependency auditing. Runs on the standard library with no runtime dependencies.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Saveliy Golubev",
+    "url": "https://github.com/NovaCode37"
+  },
+  "homepage": "https://github.com/NovaCode37/claude-security-skills",
+  "repository": "https://github.com/NovaCode37/claude-security-skills",
+  "license": "MIT",
+  "keywords": [
+    "security",
+    "appsec",
+    "secret-scanning",
+    "sast",
+    "prompt-injection",
+    "jwt",
+    "dependency-audit"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "claude-security-skills",
+  "owner": {
+    "name": "Saveliy Golubev",
+    "url": "https://github.com/NovaCode37"
+  },
+  "plugins": [
+    {
+      "name": "claude-security-skills",
+      "source": "./",
+      "description": "Eight security skills: secret scanning, Python SAST, prompt-injection testing, and HTTP, JWT, Dockerfile, CORS and dependency auditing."
+    }
+  ]
+}
