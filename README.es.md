@@ -126,6 +126,10 @@ puedes resolver una sin leer todo el código antes.
 [CONTRIBUTING.md](CONTRIBUTING.md) tiene la plantilla de habilidad y las
 convenciones.
 
+## También de este proyecto
+
+[PRISM](https://github.com/NovaCode37/Prism-platform) — una plataforma OSINT autoalojada con panel web: dominios, IPs, correos, teléfonos y nombres de usuario en más de 22 módulos, con puntuación de exposición, grafo de entidades e informes en HTML y PDF.
+
 ## Aspectos legales
 
 Estas herramientas son para pruebas de seguridad autorizadas, aprendizaje y

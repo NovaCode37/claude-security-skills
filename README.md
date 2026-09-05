@@ -122,6 +122,10 @@ each name the file to edit and what has to pass before it's done, so you can
 land one without reading the whole codebase first.
 [CONTRIBUTING.md](CONTRIBUTING.md) has the skill template and the conventions.
 
+## Also from this project
+
+[PRISM](https://github.com/NovaCode37/Prism-platform) — a self-hosted OSINT platform with a web dashboard: domains, IPs, emails, phone numbers and usernames across 22+ modules, with an exposure score, entity graph and HTML/PDF reports.
+
 ## Legal
 
 These tools are for authorized security testing, learning and defensive work.
