@@ -1,50 +1,72 @@
-# Habilidades de Seguridad de Claude
+# Claude Security Skills
 
-<div align="center">
+Habilidades de seguridad para [Claude Code](https://claude.com/claude-code).
+Instálalas una vez y pídele a Claude, en lenguaje corriente, que busque secretos
+filtrados en un repositorio, revise código Python, someta tu LLM a pruebas de
+prompt injection, o audite cabeceras HTTP, JWT, Dockerfiles, CORS y
+dependencias. Claude elige la habilidad adecuada, la ejecuta y explica lo que
+encontró.
 
-**Habilidades de Claude Code [Claude Code](https://claude.com/claude-code) listas para producción para seguridad ofensiva y defensiva.**
+Todo funciona con la biblioteca estándar de Python: no hay paquetes que
+instalar y nada sale de tu máquina. El análisis es offline; solo las habilidades
+que necesitan una URL usan la red, y únicamente cuando se lo pides.
 
-Encuentra secretos filtrados, ejecuta SAST ligero, prueba prompt injection en LLM, y audita encabezados HTTP, JWT y dependencias desde solicitudes en lenguaje natural dentro de Claude Code.
+Python 3.9+, licencia MIT. Otros idiomas: [English](README.md) · [Русский](README.ru.md)
 
-[![CI](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-158%20passing-brightgreen)](#tests)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
-[![Dependencias en tiempo de ejecución](https://img.shields.io/badge/runtime%20deps-0-success)](#design-principles)
-[![License: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-orange)](CONTRIBUTING.md)
-
-[**Instalar**](#install) · [**Habilidades**](#the-skills) · [**Uso**](#usage) · [**Cómo funciona**](#how-it-works) · [**Contribuir**](CONTRIBUTING.md)
-
-</div>
-
----
-
-## ¿Qué es esto?
-
-Estas habilidades de Claude Code encapsulan capacidades de seguridad especializadas para que puedas invocarlas desde una sola instrucción en lenguaje natural.
-
-Después de instalar el paquete, pide cosas como:
-
-> 💬 *"Escanea este repositorio en busca de secretos filtrados."*
-> 💬 *"Haz un red-team de mi chatbot para prompt injection y dame una puntuación."*
-> 💬 *"Audita un repositorio Python en busca de vulnerabilidades."*
-
-Claude selecciona la habilidad correcta, ejecuta el motor y resume los resultados con sugerencias de corrección.
-
-## Habilidades
+## Las habilidades
 
 | Habilidad | Qué hace | Motor |
-|----------|----------|-------|
-| [**secret-scanner**](skills/secret-scanner) | Detecta llaves API, tokens y claves privadas con regex + análisis de entropía, minimizando falsos positivos | Motor de entropía propio |
-| [**sast-lite**](skills/sast-lite) | Análisis estático básico de Python para inyección de comandos, eval/exec, deserialización insegura, SQLi, crypto débil y TLS deshabilitado | Recorrido de AST |
-| [**prompt-injection-tester**](skills/prompt-injection-tester) | Prueba tu LLM con payloads clasificados y marcadores de éxito, devuelve resiliencia 0–100 | Harness canario |
-| [**http-sec-audit**](skills/http-sec-audit) | Audita encabezados de seguridad HTTP y cookies (CSP, HSTS, SameSite, etc.) con recomendaciones | urllib + lógica de núcleo |
-| [**jwt-inspector**](skills/jwt-inspector) | Decodifica y audita JWT (alg=none, expiración débil, higiene de claims) y fuerza secretos HMAC débiles | HMAC + reglas |
-| [**dependency-check**](skills/dependency-check) | Detecta dependencias vulnerables/no fijadas en `requirements.txt` / `package.json` / `pyproject.toml` | Analizador de versiones |
-| [**dockerfile-scan**](skills/dockerfile-scan) | Detecta patrones inseguros en Dockerfile: ejecución como root, imagen base `:latest`, `curl \| sh`, `ADD` remoto, secretos incrustados | Analizador de Dockerfile |
-| [**cors-auditor**](skills/cors-auditor) | Audita la configuración CORS: comodín con credenciales, Origin reflejado, origen `null`, métodos demasiado amplios | Analizador de cabeceras |
+|-----------|----------|-------|
+| [secret-scanner](skills/secret-scanner) | Encuentra llaves de API, tokens y claves privadas escritas en el código, combinando patrones de proveedores con análisis de entropía de Shannon, ajustado para dar pocos falsos positivos | Motor de entropía propio |
+| [sast-lite](skills/sast-lite) | Análisis estático de Python sobre el AST: inyección de comandos, eval/exec, deserialización insegura, SQLi, criptografía débil, TLS desactivado — cada hallazgo con su CWE | Recorrido del AST |
+| [prompt-injection-tester](skills/prompt-injection-tester) | Somete tu propia aplicación LLM a una biblioteca de payloads clasificados con detección de canarios, y puntúa la resistencia de 0 a 100 | Harness de canarios |
+| [http-sec-audit](skills/http-sec-audit) | Revisa las cabeceras de seguridad HTTP y los flags de las cookies (CSP, HSTS, SameSite y demás) e indica qué corregir | urllib |
+| [jwt-inspector](skills/jwt-inspector) | Decodifica y audita JWT (alg=none, expiración demasiado larga, higiene de claims) y descifra secretos HMAC débiles sin conexión | HMAC y comprobaciones |
+| [dependency-check](skills/dependency-check) | Señala dependencias vulnerables y sin fijar en `requirements.txt`, `package.json` y `pyproject.toml`; base offline y, si quieres, OSV.dev | Comparador de versiones |
+| [dockerfile-scan](skills/dockerfile-scan) | Detecta patrones inseguros en Dockerfile: ejecución como root, imagen base `:latest`, `curl \| sh`, `ADD` remoto, secretos incrustados | Analizador de Dockerfile |
+| [cors-auditor](skills/cors-auditor) | Audita la configuración CORS: comodín junto a credenciales, Origin reflejado, origen `null`, métodos demasiado amplios | Analizador de cabeceras |
+
+Cada habilidad es autónoma, trae sus propias pruebas y termina con código
+distinto de cero cuando encuentra algo, así que también sirve como paso de CI.
+
+## Instalación
+
+Como plugin, desde dentro de Claude Code:
+
+```
+/plugin marketplace add NovaCode37/claude-security-skills
+/plugin install claude-security-skills
+```
+
+Las ocho habilidades llegan juntas y se actualizan con el marketplace.
+
+O cópialas a mano, que funciona igual:
+
+```bash
+git clone https://github.com/NovaCode37/claude-security-skills.git
+cp -r claude-security-skills/skills/* .claude/skills/
+```
+
+Usa `~/.claude/skills/` si las quieres en todos tus proyectos. Reinicia Claude
+Code y las descubrirá a partir de cada `SKILL.md`. No hay nada más que instalar
+en ninguno de los dos casos.
 
 ## Uso
+
+Basta con pedírselo a Claude:
+
+| Tú dices | Claude ejecuta |
+|----------|----------------|
+| «¿Hay secretos subidos aquí?» | secret-scanner |
+| «Revisa la seguridad de este archivo Python.» | sast-lite |
+| «¿Se puede romper mi asistente con un prompt?» | prompt-injection-tester |
+| «Mira las cabeceras de seguridad de example.com.» | http-sec-audit |
+| «Decodifica y audita este JWT.» | jwt-inspector |
+| «¿Tengo dependencias vulnerables?» | dependency-check |
+| «Revisa mi Dockerfile.» | dockerfile-scan |
+| «¿El CORS de mi API es seguro?» | cors-auditor |
+
+Cada motor también se ejecuta por su cuenta desde la línea de comandos:
 
 ```bash
 python skills/secret-scanner/engine.py .            --json
@@ -53,6 +75,22 @@ python skills/prompt-injection-tester/attacker.py   --demo
 python skills/http-sec-audit/audit.py https://example.com
 python skills/jwt-inspector/inspector.py "<token>"
 python skills/dependency-check/checker.py requirements.txt
+python skills/dockerfile-scan/scanner.py Dockerfile
+python skills/cors-auditor/auditor.py https://api.example.com
+```
+
+Así se ve una ejecución:
+
+```console
+$ python skills/secret-scanner/engine.py .
+[secret-scanner] 2 potential secret(s) found:
+
+  CRITICAL   src/config.py:14:18
+             Stripe secret key [stripe-secret]  value=sk_l...k1L2 (len=32)
+  HIGH       src/config.py:12:11
+             AWS Access Key ID [aws-access-key-id]  value=AKIA...MPLE (len=20)
+
+Summary: critical=1, high=1
 ```
 
 ## Pruebas
@@ -62,17 +100,38 @@ pip install pytest
 pytest skills/ -q
 ```
 
-## Principios de diseño
+158 pruebas, todas offline, en menos de un segundo.
 
-- **Sin dependencias en tiempo de ejecución.** Funciona solo con la biblioteca estándar de Python 3.9+.
-- **Núcleo offline-first.** El análisis puede ejecutarse sin red; cualquier función de red es opcional y explícita.
-- **Falsos positivos bajos.** Umbral de entropía, anclas de palabras clave y listas blancas de placeholders reducen ruido.
-- **Amigable con CI.** Códigos de salida coherentes (`0` limpio / `1` hallazgos / `2` error).
+## Cómo está construido
 
-## Contribuciones
+- **Sin dependencias en tiempo de ejecución.** Solo la biblioteca estándar de
+  Python 3.9+, así que las habilidades funcionan en CI aislado y son fáciles de
+  leer y auditar.
+- **Offline por defecto.** La lógica de análisis recibe datos y devuelve
+  hallazgos; el acceso a la red es opcional y explícito.
+- **Pocos falsos positivos.** Umbrales de entropía, anclaje por palabras clave
+  y listas de marcadores de posición mantienen bajo el ruido.
+- **Pensado para CI.** Códigos de salida coherentes (`0` limpio, `1` hallazgos,
+  `2` error) y `--json` en todas las habilidades.
+- **Seguro por defecto.** Los secretos se enmascaran en la salida, y las
+  habilidades ofensivas están pensadas para sistemas que te pertenecen o que
+  tienes permiso para probar.
 
-Nuevas habilidades, reglas y mejoras de documentación son bienvenidas.
+## Contribuir
 
-- Revisa [CONTRIBUTING.md](CONTRIBUTING.md)
-- Consulta problemas etiquetados como [good first issues](docs/GOOD_FIRST_ISSUES.md)
-- Abre una discusión en [GitHub Discussions](https://github.com/NovaCode37/claude-security-skills/discussions) si quieres proponer algo nuevo.
+Se agradecen nuevas habilidades y reglas. Las incidencias abiertas con la
+etiqueta [good first issue](https://github.com/NovaCode37/claude-security-skills/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+indican qué archivo tocar y qué debe pasar para darlas por terminadas, así que
+puedes resolver una sin leer todo el código antes.
+[CONTRIBUTING.md](CONTRIBUTING.md) tiene la plantilla de habilidad y las
+convenciones.
+
+## Aspectos legales
+
+Estas herramientas son para pruebas de seguridad autorizadas, aprendizaje y
+trabajo defensivo. Analiza únicamente sistemas y datos que te pertenezcan o
+para los que tengas permiso. Los mantenedores no se responsabilizan del mal uso.
+
+## Licencia
+
+[MIT](LICENSE)

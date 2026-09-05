@@ -1,106 +1,95 @@
 # Claude Security Skills
 
-<div align="center">
+Скиллы по безопасности для [Claude Code](https://claude.com/claude-code).
+Поставьте их один раз и просите Claude обычными словами: найти утёкшие секреты
+в репозитории, проверить питоновский код, погонять свой LLM на prompt injection,
+разобрать HTTP-заголовки, JWT, Dockerfile, CORS или зависимости. Claude сам
+выберет нужный скилл, запустит его и объяснит, что нашлось.
 
-**Готовые к продакшену скиллы [Claude Code](https://claude.com/claude-code) для наступательной и оборонительной безопасности.**
+Всё работает на стандартной библиотеке Python: ставить нечего, наружу ничего не
+уходит. Анализ идёт офлайн, в сеть лезут только те скиллы, которым нужен URL, и
+только когда вы их об этом просите.
 
-Находите утёкшие секреты, запускайте лёгкий SAST, тестируйте свой LLM на prompt injection, проверяйте HTTP-заголовки, JWT и зависимости — всё обычными запросами на естественном языке внутри Claude Code.
-
-[![CI](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#тесты)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
-[![Zero deps](https://img.shields.io/badge/runtime%20deps-0-success)](#принципы-дизайна)
-[![License: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-orange)](CONTRIBUTING.md)
-
-[**English**](README.md) · [**Español**](README.es.md)
-
-[**Установка**](#установка) · [**Скиллы**](#скиллы) · [**Использование**](#использование) · [**Как это работает**](#как-это-работает) · [**Контрибьютинг**](CONTRIBUTING.md)
-
-</div>
-
----
-
-## Что это?
-
-[Agent **Skills**](https://docs.claude.com/en/docs/claude-code/skills) позволяют Claude Code подгружать специализированные возможности по требованию. Этот репозиторий собирает восемь скиллов по безопасности. После установки просто попросите Claude обычным языком:
-
-> 💬 *«Просканируй этот репозиторий на закоммиченные секреты перед публикацией.»*
-> 💬 *«Прогони мой чат-бот на prompt injection и дай оценку устойчивости.»*
-> 💬 *«Проверь этот Python-сервис на уязвимости.»*
-
-Claude сам выбирает нужный скилл, запускает движок и объясняет результаты с рекомендациями по исправлению — никаких флагов запоминать не надо.
-
-## Как это работает
-
-```mermaid
-flowchart LR
-    A([Вы спрашиваете<br/>]) --> B{Claude Code<br/>выбирает скилл}
-    B --> C[Движок работает<br/>только stdlib · офлайн]
-    C --> D[[Находки<br/>+ severity + CWE]]
-    D --> E([Claude объясняет<br/>и предлагает фиксы])
-    style A fill:#0e1830,stroke:#34d399,color:#cdd9ef
-    style B fill:#0e1830,stroke:#22d3ee,color:#cdd9ef
-    style C fill:#0e1830,stroke:#a78bfa,color:#cdd9ef
-    style D fill:#0e1830,stroke:#f59e0b,color:#cdd9ef
-    style E fill:#0e1830,stroke:#34d399,color:#cdd9ef
-```
+Python 3.9+, лицензия MIT. Другие языки: [English](README.md) · [Español](README.es.md)
 
 ## Скиллы
 
 | Скилл | Что делает | Движок |
 |-------|------------|--------|
-| [**secret-scanner**](skills/secret-scanner) | Находит зашитые API-ключи, токены и приватные ключи через вендорные регэкспы **+ анализ энтропии Шеннона**, с низким числом ложных срабатываний | Свой движок энтропии |
-| [**sast-lite**](skills/sast-lite) | **Статический анализ на основе AST** для Python: инъекция команд, eval/exec, небезопасная десериализация, SQLi, слабая криптография, отключённый TLS — каждый с тегом CWE | Обход AST Python |
-| [**prompt-injection-tester**](skills/prompt-injection-tester) | Red-team **вашего собственного LLM-приложения**: категоризированная библиотека пейлоадов + детект канарейки, оценка устойчивости 0–100 | Canary-харнесс |
-| [**http-sec-audit**](skills/http-sec-audit) | Аудит HTTP security-заголовков и флагов cookie (CSP, HSTS, SameSite, …) с конкретными фиксами | urllib + чистое ядро |
-| [**jwt-inspector**](skills/jwt-inspector) | Декодирует и аудитит JWT (alg=none, слабый expiry, гигиена claims) и офлайн подбирает слабые HMAC-секреты | HMAC + проверки |
-| [**dependency-check**](skills/dependency-check) | Отмечает уязвимые и незапиненные зависимости в `requirements.txt` / `package.json` / `pyproject.toml`, офлайн-база + опционально OSV.dev | Сопоставление версий |
-| [**dockerfile-scan**](skills/dockerfile-scan) | Ловит небезопасные паттерны в Dockerfile: запуск от root, базовый образ `:latest`, `curl \| sh`, удалённый `ADD`, зашитые секреты | Парсер Dockerfile |
-| [**cors-auditor**](skills/cors-auditor) | Аудит конфигурации CORS: wildcard с credentials, отражённый Origin, `null`-origin, слишком широкие методы | Анализатор заголовков |
+| [secret-scanner](skills/secret-scanner) | Находит зашитые в код API-ключи, токены и приватные ключи по вендорным шаблонам вместе с анализом энтропии Шеннона, настроен на малое число ложных срабатываний | Свой движок энтропии |
+| [sast-lite](skills/sast-lite) | Статический анализ Python по AST: инъекция команд, eval/exec, небезопасная десериализация, SQLi, слабая криптография, отключённый TLS — каждая находка с номером CWE | Обход AST |
+| [prompt-injection-tester](skills/prompt-injection-tester) | Гоняет ваше собственное LLM-приложение по библиотеке пейлоадов с детектом канареек и выставляет устойчивость от 0 до 100 | Canary-харнесс |
+| [http-sec-audit](skills/http-sec-audit) | Проверяет HTTP-заголовки безопасности и флаги cookie (CSP, HSTS, SameSite и прочие) и говорит, что именно поправить | urllib |
+| [jwt-inspector](skills/jwt-inspector) | Разбирает и аудитит JWT (alg=none, слишком долгий срок жизни, гигиена claims) и офлайн подбирает слабые HMAC-секреты | HMAC и проверки |
+| [dependency-check](skills/dependency-check) | Отмечает уязвимые и незакреплённые зависимости в `requirements.txt`, `package.json` и `pyproject.toml`; офлайн-база, при желании OSV.dev | Сопоставление версий |
+| [dockerfile-scan](skills/dockerfile-scan) | Ловит опасное в Dockerfile: запуск от root, базовый образ `:latest`, `curl \| sh`, удалённый `ADD`, зашитые секреты | Парсер Dockerfile |
+| [cors-auditor](skills/cors-auditor) | Разбирает настройки CORS: wildcard вместе с credentials, отражённый Origin, `null`-origin, слишком широкий список методов | Анализатор заголовков |
 
-Каждый скилл **самодостаточен**, **покрыт CI** и завершается с ненулевым кодом при находках — встраивается прямо в пайплайн.
+Каждый скилл самодостаточен, имеет свои тесты и завершается ненулевым кодом,
+когда что-то нашёл, — то есть годится и как шаг в CI.
 
 ## Установка
 
-### Вариант A — скиллы проекта (рекомендуется)
+Плагином, прямо из Claude Code:
+
+```
+/plugin marketplace add NovaCode37/claude-security-skills
+/plugin install claude-security-skills
+```
+
+Все восемь скиллов приезжают вместе и обновляются вместе с маркетплейсом.
+
+Либо скопировать руками, работает так же:
 
 ```bash
 git clone https://github.com/NovaCode37/claude-security-skills.git
 cp -r claude-security-skills/skills/* .claude/skills/
 ```
 
-### Вариант B — личные скиллы (доступны в каждом проекте)
+Копируйте в `~/.claude/skills/`, если хотите иметь их во всех проектах.
+Перезапустите Claude Code, и он найдёт скиллы по файлам `SKILL.md`. Больше
+ставить ничего не нужно ни при одном из способов.
 
-```bash
-git clone https://github.com/NovaCode37/claude-security-skills.git
-cp -r claude-security-skills/skills/* ~/.claude/skills/
-```
+## Как пользоваться
 
-Перезапустите Claude Code — скиллы автоматически обнаружатся по front matter в их `SKILL.md`. И всё — **никаких зависимостей** ставить не нужно.
+Просто спросите Claude:
 
-## Использование
+| Вы говорите | Claude запускает |
+|-------------|------------------|
+| «Есть тут закоммиченные секреты?» | secret-scanner |
+| «Проверь этот питоновский файл на уязвимости.» | sast-lite |
+| «Мой ассистент можно сломать промптом?» | prompt-injection-tester |
+| «Посмотри security-заголовки example.com.» | http-sec-audit |
+| «Разбери этот JWT.» | jwt-inspector |
+| «В зависимостях есть уязвимые?» | dependency-check |
+| «Глянь мой Dockerfile.» | dockerfile-scan |
+| «CORS у моего API нормально настроен?» | cors-auditor |
 
-Просто попросите. Несколько примеров:
-
-| Вы говорите… | Claude запускает… |
-|--------------|-------------------|
-| «Тут есть закоммиченные секреты?» | `secret-scanner` |
-| «Проверь этот Python-файл на безопасность.» | `sast-lite` |
-| «Мой ИИ-ассистент джейлбрейкается?» | `prompt-injection-tester` |
-| «Проверь security-заголовки example.com.» | `http-sec-audit` |
-| «Декодируй и проверь этот JWT.» | `jwt-inspector` |
-| «Мои зависимости уязвимы?» | `dependency-check` |
-
-Предпочитаете CLI? Каждый движок запускается standalone:
+Каждый движок запускается и сам по себе, из командной строки:
 
 ```bash
 python skills/secret-scanner/engine.py .            --json
 python skills/sast-lite/analyzer.py src/            --min-severity high
 python skills/prompt-injection-tester/attacker.py   --demo
 python skills/http-sec-audit/audit.py https://example.com
-python skills/jwt-inspector/inspector.py "<token>"
+python skills/jwt-inspector/inspector.py "<токен>"
 python skills/dependency-check/checker.py requirements.txt
+python skills/dockerfile-scan/scanner.py Dockerfile
+python skills/cors-auditor/auditor.py https://api.example.com
+```
+
+Вот как выглядит запуск:
+
+```console
+$ python skills/secret-scanner/engine.py .
+[secret-scanner] 2 potential secret(s) found:
+
+  CRITICAL   src/config.py:14:18
+             Stripe secret key [stripe-secret]  value=sk_l...k1L2 (len=32)
+  HIGH       src/config.py:12:11
+             AWS Access Key ID [aws-access-key-id]  value=AKIA...MPLE (len=20)
+
+Summary: critical=1, high=1
 ```
 
 ## Тесты
@@ -110,26 +99,37 @@ pip install pytest
 pytest skills/ -q
 ```
 
-## Принципы дизайна
+158 тестов, все офлайн, отрабатывают меньше чем за секунду.
 
-- **Ноль зависимостей в рантайме.** Всё работает на стандартной библиотеке Python 3.9+, поэтому скиллы запускаются в air-gapped CI и легко аудируются.
-- **Офлайн-first ядро.** Логика анализа чистая (данные на вход → находки на выход) и покрыта юнит-тестами; доступ к сети всегда опционален и явный.
-- **Мало ложных срабатываний.** Порог энтропии, привязка к ключевым словам и allowlist'ы плейсхолдеров снижают шум.
-- **Дружелюбен к CI.** Согласованные коды выхода (`0` чисто / `1` находки / `2` ошибка) и `--json` везде.
-- **Безопасность по умолчанию.** Секреты редактируются в выводе; наступательные скиллы применяются только к системам, которыми вы владеете или имеете разрешение тестировать.
+## На чём это построено
 
-## Контрибьютинг
+- **Никаких зависимостей в рантайме.** Только стандартная библиотека Python
+  3.9+, поэтому скиллы работают в закрытом CI и их несложно прочитать глазами.
+- **Офлайн по умолчанию.** Логика анализа принимает данные и возвращает
+  находки; выход в сеть — отдельная и явная вещь.
+- **Мало ложных срабатываний.** Пороги энтропии, привязка к ключевым словам и
+  списки заглушек убирают шум.
+- **Дружит с CI.** Одинаковые коды возврата (`0` чисто, `1` есть находки,
+  `2` ошибка) и `--json` у каждого скилла.
+- **Безопасно по умолчанию.** Секреты в выводе маскируются, а наступательные
+  скиллы предназначены для систем, которыми вы владеете или на тест которых у
+  вас есть разрешение.
 
-Новые скиллы и правила приветствуются — репозиторий создан, чтобы расти через PR.
+## Как поучаствовать
 
-- Возьмите [**good first issue**](docs/GOOD_FIRST_ISSUES.md) — в каждой указан файл и критерии приёмки.
-- Прочитайте [CONTRIBUTING.md](CONTRIBUTING.md) — шаблон скилла и соглашения.
-- Есть идея? Откройте [Discussion](https://github.com/NovaCode37/claude-security-skills/discussions).
+Новые скиллы и правила приветствуются. У открытых задач с меткой
+[good first issue](https://github.com/NovaCode37/claude-security-skills/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+указано, какой файл править и что должно заработать, чтобы задача считалась
+сделанной, — так что взяться можно, не читая весь код целиком. В
+[CONTRIBUTING.md](CONTRIBUTING.md) лежит шаблон скилла и принятые соглашения.
 
 ## Право и этика
 
-Эти инструменты предназначены для **авторизованного** тестирования безопасности, обучения и защиты. Сканируйте только те системы и данные, которыми владеете или на тест которых есть явное разрешение. Сопровождающие не несут ответственности за злоупотребление.
+Эти инструменты предназначены для авторизованного тестирования безопасности,
+обучения и защиты. Сканируйте только те системы и данные, которыми владеете или
+на проверку которых у вас есть разрешение. За неправомерное использование
+авторы ответственности не несут.
 
 ## Лицензия
 
-[MIT](LICENSE) © contributors
+[MIT](LICENSE)

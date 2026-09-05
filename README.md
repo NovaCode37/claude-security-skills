@@ -10,13 +10,7 @@ Everything here runs on the Python standard library — no packages to install,
 nothing phoning home. The analysis runs offline; only the few skills that need
 to hit a URL use the network, and only when you ask them to.
 
-[![CI](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-158%20passing-brightgreen)](#tests)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
-[![Zero deps](https://img.shields.io/badge/runtime%20deps-0-success)](#design-principles)
-[![License: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)
-
-Other languages: [Español](README.es.md) · [Русский](README.ru.md)
+Python 3.9+, MIT licensed. Other languages: [Español](README.es.md) · [Русский](README.ru.md)
 
 ## The skills
 
@@ -122,11 +116,11 @@ pytest skills/ -q
 
 ## Contributing
 
-New skills and rules are welcome. The good first issues in
-[docs/GOOD_FIRST_ISSUES.md](docs/GOOD_FIRST_ISSUES.md) each say which file to
-edit and how to know you're done, and [CONTRIBUTING.md](CONTRIBUTING.md) has the
-skill template and conventions. If you have an idea, open a
-[discussion](https://github.com/NovaCode37/claude-security-skills/discussions).
+New skills and rules are welcome. The open issues tagged
+[good first issue](https://github.com/NovaCode37/claude-security-skills/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+each name the file to edit and what has to pass before it's done, so you can
+land one without reading the whole codebase first.
+[CONTRIBUTING.md](CONTRIBUTING.md) has the skill template and the conventions.
 
 ## Legal
 
