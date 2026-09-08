@@ -97,6 +97,17 @@ def audit_headers(headers: dict, cookies: list[str] | None = None,
     return findings
 
 
+def filter_by_severity(findings: list[Finding],
+                       min_severity: str = "info") -> list[Finding]:
+    """Keep only findings at or above ``min_severity`` (see SEV_RANK).
+
+    Whatever survives this filter is what gets reported, and a non-empty
+    report is what makes the CLI exit 1 — the two never disagree.
+    """
+    threshold = SEV_RANK.get(min_severity, SEV_RANK["info"])
+    return [f for f in findings if SEV_RANK.get(f.severity, 3) <= threshold]
+
+
 def _parse_max_age(hsts: str):
     for part in hsts.split(";"):
         part = part.strip().lower()
@@ -191,6 +202,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--headers-file",
                    help="offline: file with a raw HTTP response header block")
     p.add_argument("--json", action="store_true", help="emit JSON")
+    p.add_argument("--min-severity", default="info", choices=list(SEV_RANK),
+                   help="report findings at or above this severity "
+                        "(default: info, i.e. report everything)")
     args = p.parse_args(argv)
 
     if args.headers_file:
@@ -213,12 +227,13 @@ def main(argv: list[str] | None = None) -> int:
         p.error("provide a URL or --headers-file")
         return 2
 
-    findings = audit_headers(headers, cookies, is_https=is_https)
+    findings = filter_by_severity(
+        audit_headers(headers, cookies, is_https=is_https), args.min_severity)
     if args.json:
         print(json.dumps([f.to_dict() for f in findings], indent=2))
     else:
         print(render(findings, target))
-    return 1 if any(f.severity in ("critical", "high") for f in findings) else 0
+    return 1 if findings else 0
 
 
 if __name__ == "__main__":

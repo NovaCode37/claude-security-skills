@@ -45,10 +45,15 @@ python skills/dependency-check/checker.py requirements.txt --online
 
 # JSON output
 python skills/dependency-check/checker.py . --json
+
+# Only report MEDIUM or higher findings (unpinned warnings are LOW)
+python skills/dependency-check/checker.py . --min-severity medium
 ```
 
-**Exit codes:** `0` no known vulns · `1` vulnerabilities found · `2` no
-manifest / usage error.
+**Exit codes:** `0` clean · `1` findings reported · `2` no manifest / usage
+error. Unpinned dependencies are reported, so they fail the build too; suppress
+them with `--no-unpinned`, or raise `--min-severity` to filter advisory
+findings out of both the report and the exit code.
 
 ## Recommended workflow for Claude
 

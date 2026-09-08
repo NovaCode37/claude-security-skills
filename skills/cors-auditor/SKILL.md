@@ -46,10 +46,16 @@ python skills/cors-auditor/auditor.py https://api.example.com --origin https://e
 
 # Offline: audit a captured header block; pass --origin to test reflection
 python skills/cors-auditor/auditor.py --headers-file resp.txt --origin https://evil.example
+
+# Only fail CI on high/critical (hides the medium wildcard + info notes)
+python skills/cors-auditor/auditor.py https://api.example.com --min-severity high
 ```
 
-**Exit codes:** `0` no high issues · `1` critical/high findings · `2` fetch/usage
-error.
+**Exit codes:** `0` clean · `1` findings reported · `2` fetch/usage error.
+Every reported finding fails the build. The default reports everything down to
+`info` (including `cors-credentials-enabled`); raise `--min-severity` to
+`low`/`medium`/`high` to filter advisory notes out of both the report and the
+exit code.
 
 ## Recommended workflow for Claude
 

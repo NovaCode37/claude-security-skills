@@ -42,9 +42,15 @@ python skills/http-sec-audit/audit.py https://example.com --json
 
 # Offline: audit a saved raw header block (no network)
 python skills/http-sec-audit/audit.py --headers-file response_headers.txt
+
+# Only fail CI on high/critical (a missing Permissions-Policy is LOW and
+# shows up on almost every site)
+python skills/http-sec-audit/audit.py https://example.com --min-severity high
 ```
 
-**Exit codes:** `0` no high issues · `1` findings present · `2` fetch/usage error.
+**Exit codes:** `0` clean · `1` findings reported · `2` fetch/usage error.
+Every reported finding fails the build; raise `--min-severity` to filter
+advisory findings out of both the report and the exit code.
 
 ## Recommended workflow for Claude
 

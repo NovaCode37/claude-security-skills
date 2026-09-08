@@ -46,10 +46,15 @@ python skills/jwt-inspector/inspector.py "<token>" --secret-list rockyou.txt
 
 # JSON output
 python skills/jwt-inspector/inspector.py "<token>" --json
+
+# Only fail CI on high/critical (claim-hygiene notes are LOW)
+python skills/jwt-inspector/inspector.py "<token>" --min-severity high
 ```
 
-**Exit codes:** `0` no high-severity issues · `1` high/critical issue found ·
-`2` malformed input.
+**Exit codes:** `0` clean · `1` issues reported · `2` malformed input.
+Every reported issue fails the build. The default reports everything down to
+`info` (including `exp-past`); raise `--min-severity` to `low`/`medium`/`high`
+to filter advisory notes out of both the report and the exit code.
 
 ## Recommended workflow for Claude
 

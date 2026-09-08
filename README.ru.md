@@ -71,7 +71,7 @@ cp -r claude-security-skills/skills/* .claude/skills/
 python skills/secret-scanner/engine.py .            --json
 python skills/sast-lite/analyzer.py src/            --min-severity high
 python skills/prompt-injection-tester/attacker.py   --demo
-python skills/http-sec-audit/audit.py https://example.com
+python skills/http-sec-audit/audit.py https://example.com --min-severity high
 python skills/jwt-inspector/inspector.py "<токен>"
 python skills/dependency-check/checker.py requirements.txt
 python skills/dockerfile-scan/scanner.py Dockerfile
@@ -99,7 +99,7 @@ pip install pytest
 pytest skills/ -q
 ```
 
-158 тестов, все офлайн, отрабатывают меньше чем за секунду.
+208 тестов, все офлайн, отрабатывают меньше чем за секунду.
 
 ## На чём это построено
 
@@ -110,7 +110,9 @@ pytest skills/ -q
 - **Мало ложных срабатываний.** Пороги энтропии, привязка к ключевым словам и
   списки заглушек убирают шум.
 - **Дружит с CI.** Одинаковые коды возврата (`0` чисто, `1` есть находки,
-  `2` ошибка) и `--json` у каждого скилла.
+  `2` ошибка) и `--json` у каждого скилла. Любая показанная находка роняет
+  сборку, независимо от severity; скиллы с информационным шумом принимают
+  `--min-severity`, чтобы пайплайн мог поднять планку.
 - **Безопасно по умолчанию.** Секреты в выводе маскируются, а наступательные
   скиллы предназначены для систем, которыми вы владеете или на тест которых у
   вас есть разрешение.

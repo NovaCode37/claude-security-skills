@@ -110,3 +110,38 @@ def test_cli_headers_file(tmp_path, capsys):
     data = json.loads(capsys.readouterr().out)
     assert any(d["id"] == "csp-missing" for d in data)
     assert rc == 1
+
+
+LOW_ONLY_HEADERS = (
+    "HTTP/1.1 200 OK\n"
+    "Content-Security-Policy: default-src 'self'; frame-ancestors 'none'\n"
+    "Strict-Transport-Security: max-age=31536000; includeSubDomains\n"
+    "X-Content-Type-Options: nosniff\n"
+    "Referrer-Policy: strict-origin-when-cross-origin\n"
+)
+
+
+def test_cli_low_only_findings_exit_one(tmp_path, capsys):
+    """LOW findings are still findings, so the build fails (issue #46)."""
+    f = tmp_path / "h.txt"
+    f.write_text(LOW_ONLY_HEADERS)
+    rc = audit.main(["--headers-file", str(f), "--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert [d["severity"] for d in data] == ["low"]
+    assert rc == 1
+
+
+def test_cli_min_severity_filters_report_and_exit(tmp_path, capsys):
+    f = tmp_path / "h.txt"
+    f.write_text(LOW_ONLY_HEADERS)
+    rc = audit.main(["--headers-file", str(f), "--min-severity", "medium",
+                     "--json"])
+    assert json.loads(capsys.readouterr().out) == []
+    assert rc == 0
+
+
+def test_filter_by_severity():
+    findings = audit.audit_headers({}, [])
+    assert audit.filter_by_severity(findings, "info") == findings
+    assert all(f.severity in ("critical", "high")
+               for f in audit.filter_by_severity(findings, "high"))

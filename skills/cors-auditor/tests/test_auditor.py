@@ -113,3 +113,52 @@ def test_cli_json(tmp_path, capsys):
     auditor.main(["--headers-file", str(f), "--json"])
     data = json.loads(capsys.readouterr().out)
     assert isinstance(data, list) and data[0]["id"] == "cors-null-origin"
+
+
+def test_cli_medium_finding_exits_one(tmp_path):
+    """A reported finding fails the build regardless of severity (issue #46)."""
+    f = tmp_path / "resp.txt"
+    f.write_text("Access-Control-Allow-Origin: *\n")
+    assert auditor.main(["--headers-file", str(f)]) == 1
+
+
+def test_cli_min_severity_filters_report_and_exit(tmp_path, capsys):
+    import json
+    f = tmp_path / "resp.txt"
+    f.write_text("Access-Control-Allow-Origin: *\n")
+    rc = auditor.main(["--headers-file", str(f), "--min-severity", "high",
+                       "--json"])
+    assert json.loads(capsys.readouterr().out) == []
+    assert rc == 0
+
+
+def test_filter_by_severity():
+    findings = auditor.audit_cors({"Access-Control-Allow-Origin": "*"})
+    assert auditor.filter_by_severity(findings, "medium") == findings
+    assert auditor.filter_by_severity(findings, "high") == []
+
+
+INFO_ONLY_HEADERS = ("Access-Control-Allow-Origin: https://app.example.com\n"
+                     "Access-Control-Allow-Credentials: true\n")
+
+
+def test_cli_info_finding_reported_by_default(tmp_path, capsys):
+    """INFO findings stay in the default report and still fail the build."""
+    import json
+    f = tmp_path / "resp.txt"
+    f.write_text(INFO_ONLY_HEADERS)
+    rc = auditor.main(["--headers-file", str(f), "--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert [d["id"] for d in data] == ["cors-credentials-enabled"]
+    assert [d["severity"] for d in data] == ["info"]
+    assert rc == 1
+
+
+def test_cli_min_severity_low_hides_info(tmp_path, capsys):
+    import json
+    f = tmp_path / "resp.txt"
+    f.write_text(INFO_ONLY_HEADERS)
+    rc = auditor.main(["--headers-file", str(f), "--min-severity", "low",
+                       "--json"])
+    assert json.loads(capsys.readouterr().out) == []
+    assert rc == 0

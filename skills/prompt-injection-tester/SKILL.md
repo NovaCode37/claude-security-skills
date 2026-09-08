@@ -57,6 +57,9 @@ python skills/prompt-injection-tester/attacker.py --demo --hardened # safe model
 python skills/prompt-injection-tester/attacker.py --demo --json
 ```
 
+**Exit codes:** `0` clean (no payload succeeded, or `--list`) · `1` at least one
+payload succeeded · `2` usage error.
+
 ## Testing a real model (recommended workflow for Claude)
 
 Wrap the user's backend in a `model(system_prompt, user_prompt) -> str`

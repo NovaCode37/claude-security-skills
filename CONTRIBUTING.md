@@ -20,7 +20,12 @@ a single new detection rule is just as valuable as a whole new skill.
 3. **Offline-first.** Core analysis must be testable without network access.
    Network features are opt-in behind an explicit flag (e.g. `--online`).
 4. **Consistent UX.** Provide a `--json` output and use the standard exit codes:
-   `0` = clean, `1` = findings, `2` = usage/error.
+   `0` = clean, `1` = findings, `2` = usage/error. Exit `1` for *any* finding
+   the run reports; do not apply a separate severity gate only to the exit
+   code. If a skill produces advisory noise, give it a `--min-severity` flag
+   (see `sast-lite`) that filters the report itself, so the report and the exit
+   code always agree. `skills/tests/test_exit_code_contract.py` pins this for
+   every skill; add new engines to it.
 5. **Safety.** Never print full secrets — redact. Offensive tooling must be
    scoped to authorized targets and say so in its `SKILL.md`.
 
