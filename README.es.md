@@ -72,7 +72,7 @@ Cada motor también se ejecuta por su cuenta desde la línea de comandos:
 python skills/secret-scanner/engine.py .            --json
 python skills/sast-lite/analyzer.py src/            --min-severity high
 python skills/prompt-injection-tester/attacker.py   --demo
-python skills/http-sec-audit/audit.py https://example.com
+python skills/http-sec-audit/audit.py https://example.com --min-severity high
 python skills/jwt-inspector/inspector.py "<token>"
 python skills/dependency-check/checker.py requirements.txt
 python skills/dockerfile-scan/scanner.py Dockerfile
@@ -100,7 +100,7 @@ pip install pytest
 pytest skills/ -q
 ```
 
-158 pruebas, todas offline, en menos de un segundo.
+208 pruebas, todas offline, en menos de un segundo.
 
 ## Cómo está construido
 
@@ -112,7 +112,10 @@ pytest skills/ -q
 - **Pocos falsos positivos.** Umbrales de entropía, anclaje por palabras clave
   y listas de marcadores de posición mantienen bajo el ruido.
 - **Pensado para CI.** Códigos de salida coherentes (`0` limpio, `1` hallazgos,
-  `2` error) y `--json` en todas las habilidades.
+  `2` error) y `--json` en todas las habilidades. Todo hallazgo reportado hace
+  fallar la compilación, sea cual sea su severidad; las habilidades que generan
+  ruido informativo aceptan `--min-severity` para que cada pipeline suba el
+  listón.
 - **Seguro por defecto.** Los secretos se enmascaran en la salida, y las
   habilidades ofensivas están pensadas para sistemas que te pertenecen o que
   tienes permiso para probar.

@@ -157,3 +157,32 @@ def test_cli_json(tmp_path, capsys):
     checker.main([str(f), "--json"])
     data = json.loads(capsys.readouterr().out)
     assert data["vulnerabilities"]
+
+
+def test_cli_unpinned_only_exits_one(tmp_path):
+    """Unpinned deps are reported, so they must fail the build (issue #46)."""
+    f = tmp_path / "requirements.txt"
+    f.write_text("httpx\nrich>=13.0\n")
+    assert checker.main([str(f)]) == 1
+
+
+def test_cli_no_unpinned_suppresses_report_and_exit(tmp_path):
+    f = tmp_path / "requirements.txt"
+    f.write_text("httpx\nrich>=13.0\n")
+    assert checker.main([str(f), "--no-unpinned"]) == 0
+
+
+def test_cli_min_severity_filters_report_and_exit(tmp_path, capsys):
+    f = tmp_path / "requirements.txt"
+    f.write_text("httpx\nrich>=13.0\n")
+    rc = checker.main([str(f), "--min-severity", "medium", "--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert data["unpinned"] == [] and data["vulnerabilities"] == []
+    assert rc == 0
+
+
+def test_run_min_severity_filters_vulnerabilities(tmp_path):
+    f = tmp_path / "requirements.txt"
+    f.write_text("jinja2==2.11.0\n")  # medium-severity advisory
+    assert checker.run(str(f))["vulnerabilities"]
+    assert checker.run(str(f), min_severity="high")["vulnerabilities"] == []

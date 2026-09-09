@@ -120,3 +120,68 @@ def test_cli_json(capsys):
     inspector.main([token, "--json"])
     data = json.loads(capsys.readouterr().out)
     assert "header" in data and "issues" in data
+
+
+def _low_only_token():
+    """RS256 token whose only findings are LOW claim-hygiene issues."""
+    now = int(time.time())
+    header = {"alg": "RS256", "typ": "JWT"}
+    payload = {"sub": "user-1", "iat": now - 60, "exp": now + 3600}
+    return "{}.{}.{}".format(_b64(header), _b64(payload),
+                            inspector.b64url_encode(b"sig"))
+
+
+def test_cli_low_only_issues_exit_one(capsys):
+    """Reported LOW issues fail the build too (issue #46)."""
+    rc = inspector.main([_low_only_token(), "--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert data["issues"] and all(i["severity"] == "low" for i in data["issues"])
+    assert rc == 1
+
+
+def test_cli_min_severity_filters_report_and_exit(capsys):
+    rc = inspector.main([_low_only_token(), "--min-severity", "medium",
+                         "--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert data["issues"] == []
+    assert rc == 0
+
+
+def test_inspect_min_severity():
+    token = f'{_b64({"alg": "none"})}.{_b64({"sub": "1"})}.'
+    all_issues = inspector.inspect(token, min_severity="info")
+    high_only = inspector.inspect(token, min_severity="high")
+    assert len(high_only["issues"]) < len(all_issues["issues"])
+    assert all(i["severity"] in ("critical", "high")
+               for i in high_only["issues"])
+
+
+def _info_only_token():
+    """RS256 token with every claim present but expired: one INFO issue."""
+    now = int(time.time())
+    header = {"alg": "RS256", "typ": "JWT"}
+    payload = {"iss": "https://issuer.example", "aud": "api", "sub": "user-1",
+               "iat": now - 7200, "nbf": now - 7200, "exp": now - 3600}
+    return "{}.{}.{}".format(_b64(header), _b64(payload),
+                            inspector.b64url_encode(b"sig"))
+
+
+def test_cli_info_issue_reported_by_default(capsys):
+    """INFO issues stay in the default report and still fail the build."""
+    rc = inspector.main([_info_only_token(), "--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert [i["id"] for i in data["issues"]] == ["exp-past"]
+    assert [i["severity"] for i in data["issues"]] == ["info"]
+    assert rc == 1
+
+
+def test_cli_min_severity_low_hides_info(capsys):
+    rc = inspector.main([_info_only_token(), "--min-severity", "low", "--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert data["issues"] == []
+    assert rc == 0
+
+
+def test_inspect_reports_info_by_default():
+    ids = {i["id"] for i in inspector.inspect(_info_only_token())["issues"]}
+    assert "exp-past" in ids

@@ -166,7 +166,19 @@ def sign_hs256(header: dict, payload: dict, secret: str) -> str:
 SEV_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
-def inspect(token: str, secret_candidates=None) -> dict:
+def filter_by_severity(issues: list[Issue],
+                       min_severity: str = "info") -> list[Issue]:
+    """Keep only issues at or above ``min_severity`` (see SEV_RANK).
+
+    Whatever survives this filter is what gets reported, and a non-empty
+    report is what makes the CLI exit 1 — the two never disagree.
+    """
+    threshold = SEV_RANK.get(min_severity, SEV_RANK["info"])
+    return [i for i in issues if SEV_RANK.get(i.severity, 3) <= threshold]
+
+
+def inspect(token: str, secret_candidates=None,
+            min_severity: str = "info") -> dict:
     jwt = decode(token)
     issues = audit(jwt)
     cracked = None
@@ -178,6 +190,7 @@ def inspect(token: str, secret_candidates=None) -> dict:
                                 f"HMAC secret cracked from wordlist: '{cracked}'. "
                                 "Anyone can forge valid tokens."))
     issues.sort(key=lambda i: SEV_RANK.get(i.severity, 9))
+    issues = filter_by_severity(issues, min_severity)
     return {
         "header": jwt.header,
         "payload": jwt.payload,
@@ -193,6 +206,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("token", help="the JWT, or '-' to read from stdin")
     p.add_argument("--secret-list", help="wordlist file for HMAC cracking")
     p.add_argument("--json", action="store_true", help="emit JSON")
+    p.add_argument("--min-severity", default="info", choices=list(SEV_RANK),
+                   help="report issues at or above this severity "
+                        "(default: info, i.e. report everything)")
     args = p.parse_args(argv)
 
     token = sys.stdin.read() if args.token == "-" else args.token
@@ -206,7 +222,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     try:
-        result = inspect(token, cands)
+        result = inspect(token, cands, args.min_severity)
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -222,8 +238,7 @@ def main(argv: list[str] | None = None) -> int:
         for i in result["issues"]:
             print(f"  [{i['severity'].upper():<8}] {i['id']}: {i['message']}")
 
-    high = any(i["severity"] in ("critical", "high") for i in result["issues"])
-    return 1 if high else 0
+    return 1 if result["issues"] else 0
 
 
 if __name__ == "__main__":

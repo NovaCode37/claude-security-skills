@@ -225,6 +225,17 @@ def unpinned_warnings(deps: list[Dep]) -> list[Finding]:
     return out
 
 
+def filter_by_severity(findings: list[Finding],
+                       min_severity: str = "info") -> list[Finding]:
+    """Keep only findings at or above ``min_severity`` (see SEV_RANK).
+
+    Whatever survives this filter is what gets reported, and a non-empty
+    report is what makes the CLI exit 1 — the two never disagree.
+    """
+    threshold = SEV_RANK.get(min_severity, SEV_RANK["info"])
+    return [f for f in findings if SEV_RANK.get(f.severity, 3) <= threshold]
+
+
 def parse_file(path: str) -> list[Dep]:
     with open(path, "r", encoding="utf-8", errors="ignore") as fh:
         text = fh.read()
@@ -249,7 +260,8 @@ def discover(path: str) -> list[str]:
     return found
 
 
-def run(path: str, online: bool = False, show_unpinned: bool = True) -> dict:
+def run(path: str, online: bool = False, show_unpinned: bool = True,
+        min_severity: str = "info") -> dict:
     files = discover(path)
     deps: list[Dep] = []
     for f in files:
@@ -257,7 +269,9 @@ def run(path: str, online: bool = False, show_unpinned: bool = True) -> dict:
     findings = check_offline(deps)
     if online:
         findings.extend(check_online_osv(deps))
-    warnings = unpinned_warnings(deps) if show_unpinned else []
+    findings = filter_by_severity(findings, min_severity)
+    warnings = (filter_by_severity(unpinned_warnings(deps), min_severity)
+                if show_unpinned else [])
     return {
         "files": files,
         "dependency_count": len(deps),
@@ -276,6 +290,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-unpinned", action="store_true",
                    help="suppress unpinned-dependency warnings")
     p.add_argument("--json", action="store_true", help="emit JSON")
+    p.add_argument("--min-severity", default="info", choices=list(SEV_RANK),
+                   help="report findings at or above this severity "
+                        "(default: info, i.e. report everything)")
     args = p.parse_args(argv)
 
     if not os.path.exists(args.path):
@@ -283,7 +300,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     result = run(args.path, online=args.online,
-                 show_unpinned=not args.no_unpinned)
+                 show_unpinned=not args.no_unpinned,
+                 min_severity=args.min_severity)
 
     if not result["files"]:
         print("error: no requirements.txt or package.json found.",
@@ -308,7 +326,7 @@ def main(argv: list[str] | None = None) -> int:
             for w in result["unpinned"]:
                 print(f"  - {w['package']} ({w['version']})")
 
-    return 1 if result["vulnerabilities"] else 0
+    return 1 if result["vulnerabilities"] or result["unpinned"] else 0
 
 
 if __name__ == "__main__":

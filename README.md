@@ -71,7 +71,7 @@ Every engine also runs on its own from the command line:
 python skills/secret-scanner/engine.py .            --json
 python skills/sast-lite/analyzer.py src/            --min-severity high
 python skills/prompt-injection-tester/attacker.py   --demo
-python skills/http-sec-audit/audit.py https://example.com
+python skills/http-sec-audit/audit.py https://example.com --min-severity high
 python skills/jwt-inspector/inspector.py "<token>"
 python skills/dependency-check/checker.py requirements.txt
 python skills/dockerfile-scan/scanner.py Dockerfile
@@ -99,7 +99,7 @@ pip install pytest
 pytest skills/ -q
 ```
 
-158 tests, all offline, run in under a second.
+208 tests, all offline, run in under a second.
 
 ## Design principles
 
@@ -110,7 +110,9 @@ pytest skills/ -q
 - **Few false positives.** Entropy thresholds, keyword anchoring and
   placeholder allowlists keep the noise down.
 - **CI-friendly.** Consistent exit codes (`0` clean, `1` findings, `2` error)
-  and `--json` on every skill.
+  and `--json` on every skill. Every reported finding fails the build, whatever
+  its severity; skills that surface advisory noise take `--min-severity` so the
+  pipeline can raise the bar.
 - **Safe by default.** Secrets are redacted in output, and the offensive
   skills are meant for systems you own or are allowed to test.
 

@@ -101,6 +101,16 @@ def parse_raw_headers(text: str) -> dict:
     return headers
 
 
+def filter_by_severity(findings: list, min_severity: str = "info") -> list:
+    """Keep only findings at or above ``min_severity`` (see SEV_RANK).
+
+    Whatever survives this filter is what gets reported, and a non-empty
+    report is what makes the CLI exit 1 — the two never disagree.
+    """
+    threshold = SEV_RANK.get(min_severity, SEV_RANK["info"])
+    return [f for f in findings if SEV_RANK.get(f.severity, 3) <= threshold]
+
+
 def render(target: str, findings: list) -> str:
     if not findings:
         return f"[cors-auditor] {target}: no CORS misconfigurations found. [OK]"
@@ -122,6 +132,9 @@ def main(argv: list | None = None) -> int:
     p.add_argument("--headers-file",
                    help="offline: file with a raw HTTP response header block")
     p.add_argument("--json", action="store_true", help="emit JSON")
+    p.add_argument("--min-severity", default="info", choices=list(SEV_RANK),
+                   help="report findings at or above this severity "
+                        "(default: info, i.e. report everything)")
     args = p.parse_args(argv)
 
     if args.headers_file:
@@ -146,12 +159,13 @@ def main(argv: list | None = None) -> int:
         p.error("provide a URL or --headers-file")
         return 2
 
-    findings = audit_cors(headers, sent_origin=sent_origin)
+    findings = filter_by_severity(
+        audit_cors(headers, sent_origin=sent_origin), args.min_severity)
     if args.json:
         print(json.dumps([f.to_dict() for f in findings], indent=2))
     else:
         print(render(target, findings))
-    return 1 if any(f.severity in ("critical", "high") for f in findings) else 0
+    return 1 if findings else 0
 
 
 if __name__ == "__main__":
