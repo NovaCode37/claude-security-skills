@@ -7,7 +7,6 @@ from dataclasses import dataclass, asdict
 
 SEV_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
-
 @dataclass
 class Finding:
     id: str
@@ -19,10 +18,8 @@ class Finding:
     def to_dict(self) -> dict:
         return asdict(self)
 
-
 def _lower_keys(headers: dict) -> dict:
     return {str(k).lower(): str(v) for k, v in headers.items()}
-
 
 def audit_headers(headers: dict, cookies: list[str] | None = None,
                   is_https: bool = True) -> list[Finding]:
@@ -96,17 +93,10 @@ def audit_headers(headers: dict, cookies: list[str] | None = None,
     findings.sort(key=lambda f: SEV_RANK.get(f.severity, 9))
     return findings
 
-
 def filter_by_severity(findings: list[Finding],
                        min_severity: str = "info") -> list[Finding]:
-    """Keep only findings at or above ``min_severity`` (see SEV_RANK).
-
-    Whatever survives this filter is what gets reported, and a non-empty
-    report is what makes the CLI exit 1 — the two never disagree.
-    """
     threshold = SEV_RANK.get(min_severity, SEV_RANK["info"])
     return [f for f in findings if SEV_RANK.get(f.severity, 3) <= threshold]
-
 
 def _parse_max_age(hsts: str):
     for part in hsts.split(";"):
@@ -117,7 +107,6 @@ def _parse_max_age(hsts: str):
             except ValueError:
                 return None
     return None
-
 
 def _audit_cookie(raw: str, is_https: bool) -> list[Finding]:
     name = raw.split("=", 1)[0].strip()
@@ -142,7 +131,6 @@ def _audit_cookie(raw: str, is_https: bool) -> list[Finding]:
                            "SameSite=None requires the Secure flag."))
     return out
 
-
 def fetch_headers(url: str, timeout: float = 10.0):
     import urllib.request
     import urllib.error
@@ -160,7 +148,6 @@ def fetch_headers(url: str, timeout: float = 10.0):
         final_url = url
     return headers, list(cookies), final_url.startswith("https://")
 
-
 def parse_raw_headers(text: str):
     headers: dict = {}
     cookies: list[str] = []
@@ -177,7 +164,6 @@ def parse_raw_headers(text: str):
             headers[key] = val
     return headers, cookies
 
-
 def render(findings: list[Finding], target: str) -> str:
     if not findings:
         return f"[http-sec-audit] {target}: no issues found. [OK]"
@@ -192,7 +178,6 @@ def render(findings: list[Finding], target: str) -> str:
     out.append("\nSummary: " + ", ".join(
         f"{k}={counts[k]}" for k in sorted(counts, key=lambda s: SEV_RANK[s])))
     return "\n".join(out)
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -234,7 +219,6 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(render(findings, target))
     return 1 if findings else 0
-
 
 if __name__ == "__main__":
     try:

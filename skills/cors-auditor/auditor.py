@@ -9,7 +9,6 @@ SEV_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 PROBE_ORIGIN = "https://cors-probe.invalid"
 
-
 @dataclass
 class Finding:
     id: str
@@ -20,10 +19,8 @@ class Finding:
     def to_dict(self) -> dict:
         return asdict(self)
 
-
 def _lower(headers: dict) -> dict:
     return {str(k).lower(): str(v) for k, v in headers.items()}
-
 
 def audit_cors(headers: dict, sent_origin: str | None = None) -> list:
     h = _lower(headers)
@@ -80,7 +77,6 @@ def audit_cors(headers: dict, sent_origin: str | None = None) -> list:
     out.sort(key=lambda f: SEV_RANK.get(f.severity, 9))
     return out
 
-
 def fetch_cors(url: str, origin: str = PROBE_ORIGIN, timeout: float = 10.0):
     import urllib.request
 
@@ -89,7 +85,6 @@ def fetch_cors(url: str, origin: str = PROBE_ORIGIN, timeout: float = 10.0):
         headers={"Origin": origin, "User-Agent": "cors-auditor/1.0"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return dict(resp.headers.items())
-
 
 def parse_raw_headers(text: str) -> dict:
     headers: dict = {}
@@ -100,16 +95,9 @@ def parse_raw_headers(text: str) -> dict:
         headers[key.strip()] = val.strip()
     return headers
 
-
 def filter_by_severity(findings: list, min_severity: str = "info") -> list:
-    """Keep only findings at or above ``min_severity`` (see SEV_RANK).
-
-    Whatever survives this filter is what gets reported, and a non-empty
-    report is what makes the CLI exit 1 — the two never disagree.
-    """
     threshold = SEV_RANK.get(min_severity, SEV_RANK["info"])
     return [f for f in findings if SEV_RANK.get(f.severity, 3) <= threshold]
-
 
 def render(target: str, findings: list) -> str:
     if not findings:
@@ -120,7 +108,6 @@ def render(target: str, findings: list) -> str:
         out.append(f"             {f.message}")
         out.append(f"             fix: {f.recommendation}")
     return "\n".join(out)
-
 
 def main(argv: list | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -166,7 +153,6 @@ def main(argv: list | None = None) -> int:
     else:
         print(render(target, findings))
     return 1 if findings else 0
-
 
 if __name__ == "__main__":
     try:

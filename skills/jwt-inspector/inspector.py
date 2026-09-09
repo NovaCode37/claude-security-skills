@@ -9,15 +9,12 @@ import sys
 import time
 from dataclasses import dataclass, asdict
 
-
 def b64url_decode(segment: str) -> bytes:
     pad = "=" * (-len(segment) % 4)
     return base64.urlsafe_b64decode(segment + pad)
 
-
 def b64url_encode(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
-
 
 @dataclass
 class DecodedJWT:
@@ -25,7 +22,6 @@ class DecodedJWT:
     payload: dict
     signature_b64: str
     signing_input: bytes
-
 
 def decode(token: str) -> DecodedJWT:
     token = token.strip()
@@ -45,7 +41,6 @@ def decode(token: str) -> DecodedJWT:
     return DecodedJWT(header, payload, s_b64,
                       f"{h_b64}.{p_b64}".encode("ascii"))
 
-
 @dataclass
 class Issue:
     id: str
@@ -55,9 +50,7 @@ class Issue:
     def to_dict(self) -> dict:
         return asdict(self)
 
-
 WEAK_ALGS = {"none", "hs256", "hs384", "hs512"}
-
 
 def audit(jwt: DecodedJWT) -> list[Issue]:
     issues: list[Issue] = []
@@ -122,10 +115,8 @@ def audit(jwt: DecodedJWT) -> list[Issue]:
 
     return issues
 
-
 def _ts(epoch: int) -> str:
     return time.strftime("%Y-%m-%d %H:%M:%SZ", time.gmtime(epoch))
-
 
 DEFAULT_WEAK_SECRETS = [
     "secret", "password", "123456", "changeme", "admin", "jwt", "token",
@@ -136,7 +127,6 @@ DEFAULT_WEAK_SECRETS = [
 
 _HASH_BY_ALG = {"HS256": hashlib.sha256, "HS384": hashlib.sha384,
                 "HS512": hashlib.sha512}
-
 
 def crack_hmac_secret(jwt: DecodedJWT, candidates) -> str | None:
     alg = str(jwt.header.get("alg", "")).upper()
@@ -154,7 +144,6 @@ def crack_hmac_secret(jwt: DecodedJWT, candidates) -> str | None:
             return cand if isinstance(cand, str) else cand.decode("utf-8", "ignore")
     return None
 
-
 def sign_hs256(header: dict, payload: dict, secret: str) -> str:
     h = b64url_encode(json.dumps(header, separators=(",", ":")).encode())
     p = b64url_encode(json.dumps(payload, separators=(",", ":")).encode())
@@ -162,20 +151,12 @@ def sign_hs256(header: dict, payload: dict, secret: str) -> str:
     sig = hmac.new(secret.encode(), signing_input, hashlib.sha256).digest()
     return f"{h}.{p}.{b64url_encode(sig)}"
 
-
 SEV_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
-
 
 def filter_by_severity(issues: list[Issue],
                        min_severity: str = "info") -> list[Issue]:
-    """Keep only issues at or above ``min_severity`` (see SEV_RANK).
-
-    Whatever survives this filter is what gets reported, and a non-empty
-    report is what makes the CLI exit 1 — the two never disagree.
-    """
     threshold = SEV_RANK.get(min_severity, SEV_RANK["info"])
     return [i for i in issues if SEV_RANK.get(i.severity, 3) <= threshold]
-
 
 def inspect(token: str, secret_candidates=None,
             min_severity: str = "info") -> dict:
@@ -197,7 +178,6 @@ def inspect(token: str, secret_candidates=None,
         "issues": [i.to_dict() for i in issues],
         "cracked_secret": cracked,
     }
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -239,7 +219,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  [{i['severity'].upper():<8}] {i['id']}: {i['message']}")
 
     return 1 if result["issues"] else 0
-
 
 if __name__ == "__main__":
     try:

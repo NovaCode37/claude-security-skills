@@ -9,7 +9,6 @@ from dataclasses import dataclass, asdict
 
 SEV_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
-
 ADVISORIES = {
     "pypi": {
         "flask": [("<0.12.3", "CVE-2018-1000656", "high",
@@ -39,7 +38,6 @@ ADVISORIES = {
     },
 }
 
-
 @dataclass
 class Finding:
     ecosystem: str
@@ -52,11 +50,9 @@ class Finding:
     def to_dict(self) -> dict:
         return asdict(self)
 
-
 def _norm(v: str) -> tuple:
     nums = re.findall(r"\d+", v)
     return tuple(int(n) for n in nums) if nums else (0,)
-
 
 def _cmp(a: str, b: str) -> int:
     ta, tb = _norm(a), _norm(b)
@@ -64,7 +60,6 @@ def _cmp(a: str, b: str) -> int:
     ta += (0,) * (length - len(ta))
     tb += (0,) * (length - len(tb))
     return (ta > tb) - (ta < tb)
-
 
 def version_matches(version: str, spec: str) -> bool:
     m = re.match(r"\s*(<=|>=|==|<|>)\s*(.+)\s*$", spec)
@@ -77,7 +72,6 @@ def version_matches(version: str, spec: str) -> bool:
         ">": c > 0, ">=": c >= 0,
     }[op]
 
-
 @dataclass
 class Dep:
     ecosystem: str
@@ -85,7 +79,6 @@ class Dep:
     version: str | None
     raw: str
     pinned: bool
-
 
 def _parse_dependency_token(text: str) -> tuple[str | None, str | None, bool] | None:
     token = text.split(";", 1)[0].strip()
@@ -103,7 +96,6 @@ def _parse_dependency_token(text: str) -> tuple[str | None, str | None, bool] | 
     version = ver if pinned or op else (ver if op and ver else None)
     return name, version, pinned
 
-
 def parse_requirements(text: str) -> list[Dep]:
     deps: list[Dep] = []
     for line in text.splitlines():
@@ -116,7 +108,6 @@ def parse_requirements(text: str) -> list[Dep]:
         name, version, pinned = parsed
         deps.append(Dep("pypi", name, version, line, pinned))
     return deps
-
 
 def parse_pyproject_toml(text: str) -> list[Dep]:
     try:
@@ -145,7 +136,6 @@ def parse_pyproject_toml(text: str) -> list[Dep]:
         deps.append(Dep("pypi", name, version, dep, pinned))
     return deps
 
-
 def parse_package_json(text: str) -> list[Dep]:
     try:
         data = json.loads(text)
@@ -162,7 +152,6 @@ def parse_package_json(text: str) -> list[Dep]:
             deps.append(Dep("npm", name.lower(), ver, f"{name}: {spec}", pinned))
     return deps
 
-
 def check_offline(deps: list[Dep]) -> list[Finding]:
     findings: list[Finding] = []
     for dep in deps:
@@ -175,7 +164,6 @@ def check_offline(deps: list[Dep]) -> list[Finding]:
                                         cve, sev, summary))
     findings.sort(key=lambda f: SEV_RANK.get(f.severity, 9))
     return findings
-
 
 def check_online_osv(deps: list[Dep], timeout: float = 10.0) -> list[Finding]:
     import urllib.request
@@ -205,14 +193,12 @@ def check_online_osv(deps: list[Dep], timeout: float = 10.0) -> list[Finding]:
     findings.sort(key=lambda f: SEV_RANK.get(f.severity, 9))
     return findings
 
-
 def _osv_severity(vuln: dict) -> str:
     db = (vuln.get("database_specific") or {})
     sev = str(db.get("severity", "")).lower()
     if sev in SEV_RANK:
         return sev
     return "medium"
-
 
 def unpinned_warnings(deps: list[Dep]) -> list[Finding]:
     out: list[Finding] = []
@@ -224,17 +210,10 @@ def unpinned_warnings(deps: list[Dep]) -> list[Finding]:
                                "— non-reproducible builds and supply-chain risk."))
     return out
 
-
 def filter_by_severity(findings: list[Finding],
                        min_severity: str = "info") -> list[Finding]:
-    """Keep only findings at or above ``min_severity`` (see SEV_RANK).
-
-    Whatever survives this filter is what gets reported, and a non-empty
-    report is what makes the CLI exit 1 — the two never disagree.
-    """
     threshold = SEV_RANK.get(min_severity, SEV_RANK["info"])
     return [f for f in findings if SEV_RANK.get(f.severity, 3) <= threshold]
-
 
 def parse_file(path: str) -> list[Dep]:
     with open(path, "r", encoding="utf-8", errors="ignore") as fh:
@@ -248,7 +227,6 @@ def parse_file(path: str) -> list[Dep]:
         return parse_requirements(text)
     return parse_requirements(text)
 
-
 def discover(path: str) -> list[str]:
     if os.path.isfile(path):
         return [path]
@@ -258,7 +236,6 @@ def discover(path: str) -> list[str]:
         if os.path.isfile(candidate):
             found.append(candidate)
     return found
-
 
 def run(path: str, online: bool = False, show_unpinned: bool = True,
         min_severity: str = "info") -> dict:
@@ -278,7 +255,6 @@ def run(path: str, online: bool = False, show_unpinned: bool = True,
         "vulnerabilities": [f.to_dict() for f in findings],
         "unpinned": [w.to_dict() for w in warnings],
     }
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -327,7 +303,6 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  - {w['package']} ({w['version']})")
 
     return 1 if result["vulnerabilities"] or result["unpinned"] else 0
-
 
 if __name__ == "__main__":
     try:
