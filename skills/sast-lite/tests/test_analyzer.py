@@ -142,6 +142,50 @@ def test_cli_exit_codes(tmp_path):
     assert analyzer.main([str(bad)]) == 1
 
 
+# --- random used for security values (issue #34) ----------------------------
+
+def test_random_token_flagged():
+    src = "import random\ntoken = random.choice(alphabet)\n"
+    assert "py.insecure-random" in ids(src)
+
+
+def test_random_randint_otp_flagged():
+    src = "import random\notp = random.randint(100000, 999999)\n"
+    assert "py.insecure-random" in ids(src)
+
+
+def test_random_shuffle_on_a_list_not_flagged():
+    src = "import random\ndeck = list(range(52))\nrandom.shuffle(deck)\n"
+    assert "py.insecure-random" not in ids(src)
+
+
+def test_random_sample_for_ordinary_values_not_flagged():
+    src = "import random\nwinners = random.sample(players, 3)\n"
+    assert "py.insecure-random" not in ids(src)
+
+
+def test_secrets_module_not_flagged():
+    src = "import secrets\ntoken = secrets.choice(alphabet)\n"
+    assert "py.insecure-random" not in ids(src)
+
+
+def test_insecure_random_carries_cwe_330():
+    src = "import random\nsession_token = random.random()\n"
+    issue = next(i for i in analyzer.analyze_source(src)
+                 if i.rule_id == "py.insecure-random")
+    assert issue.cwe == "CWE-330"
+
+
+# --- min-severity default (issue #48) ---------------------------------------
+
+def test_min_severity_defaults_to_info(tmp_path):
+    """Every engine starts at info, so one pipeline filters the same way."""
+    broken = tmp_path / "broken.py"
+    broken.write_text("def (:\n")
+    assert any(i.rule_id == "py.syntax-error"
+               for i in analyzer.analyze_paths([str(tmp_path)]))
+
+
 def test_cli_json(tmp_path, capsys):
     f = tmp_path / "bad.py"
     f.write_text("eval(x)\n")

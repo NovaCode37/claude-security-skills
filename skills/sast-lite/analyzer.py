@@ -66,6 +66,30 @@ PASSWORD_NAMES = {
     "access_key", "secret_key", "private_key", "auth_token",
 }
 
+SECURITY_VALUE_NAMES = (
+    "token", "password", "passwd", "pwd", "secret", "otp", "nonce", "salt",
+    "apikey", "api_key", "session",
+)
+
+RANDOM_BARE_FUNCS = {"random", "randint", "randrange", "getrandbits", "uniform"}
+
+
+def _random_call(node: ast.AST) -> str:
+    """Return the name of a `random` call, or "" for anything else.
+
+    A bare call is only treated as `random` when the name is unambiguous:
+    `choice` on its own is just as likely to be someone's own helper, while
+    `secrets.choice` must never match.
+    """
+    if not isinstance(node, ast.Call):
+        return ""
+    chain = _attr_chain(node.func)
+    if chain.startswith("random."):
+        return chain
+    if isinstance(node.func, ast.Name) and node.func.id in RANDOM_BARE_FUNCS:
+        return node.func.id
+    return ""
+
 
 class SecurityVisitor(ast.NodeVisitor):
     def __init__(self, path: str, source_lines: list[str]):
@@ -191,6 +215,21 @@ class SecurityVisitor(ast.NodeVisitor):
                     self._add(node, "py.hardcoded-secret", "CWE-798",
                               f"Hardcoded secret in variable '{name}'.",
                               "high")
+
+        # Only when the value is being assigned to something that reads like a
+        # credential. Flagging every random.choice would bury this in noise
+        # from sampling and shuffling.
+        rnd = _random_call(node.value)
+        if rnd:
+            for tgt in node.targets:
+                name = tgt.id if isinstance(tgt, ast.Name) else (
+                    tgt.attr if isinstance(tgt, ast.Attribute) else "")
+                if any(w in name.lower() for w in SECURITY_VALUE_NAMES):
+                    self._add(node, "py.insecure-random", "CWE-330",
+                              f"'{name}' is generated with {rnd}(); the random "
+                              "module is not cryptographically secure. Use "
+                              "the secrets module.", "high")
+                    break
         self.generic_visit(node)
 
     def visit_Assert(self, node: ast.Assert):
@@ -230,7 +269,7 @@ def iter_py_files(paths: Iterable[str]) -> Iterator[str]:
 
 
 def analyze_paths(paths: Iterable[str],
-                  min_severity: str = "low") -> list[Issue]:
+                  min_severity: str = "info") -> list[Issue]:
     threshold = SEVERITY_RANK.get(min_severity, 3)
     issues: list[Issue] = []
     for path in iter_py_files(paths):
@@ -280,9 +319,10 @@ def main(argv: list[str] | None = None) -> int:
         description="Lightweight AST-based Python security analyzer.")
     p.add_argument("paths", nargs="+", help="files or directories to scan")
     p.add_argument("--json", action="store_true", help="emit JSON")
-    p.add_argument("--min-severity", default="low",
+    p.add_argument("--min-severity", default="info",
                    choices=list(SEVERITY_RANK),
-                   help="report issues at or above this severity")
+                   help="report issues at or above this severity "
+                        "(default: info, i.e. report everything)")
     args = p.parse_args(argv)
 
     for path in args.paths:

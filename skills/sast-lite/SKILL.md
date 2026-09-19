@@ -35,6 +35,7 @@ are actually called — so `subprocess.run(cmd, shell=True)` is flagged while
 | SQL via f-string / concat / `.format` / `%` | CWE-89 | high |
 | `requests(verify=False)` | CWE-295 | high |
 | Hardcoded password/secret literal | CWE-798 | high |
+| `random` used for a token, password, OTP, nonce or salt | CWE-330 | high |
 | Weak hash (md5/sha1) | CWE-327 | medium |
 | `tempfile.mktemp` | CWE-377 | medium |
 | `Flask(debug=True)` | CWE-489 | medium |
