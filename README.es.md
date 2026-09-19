@@ -1,5 +1,9 @@
 # Claude Security Skills
 
+[![CI](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/NovaCode37/claude-security-skills?style=flat-square&color=7c5cfc)](https://github.com/NovaCode37/claude-security-skills/releases)
+[![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
+
 Habilidades de seguridad para [Claude Code](https://claude.com/claude-code).
 Instálalas una vez y pídele a Claude, en lenguaje corriente, que busque secretos
 filtrados en un repositorio, revise código Python, someta tu LLM a pruebas de
@@ -12,6 +16,23 @@ instalar y nada sale de tu máquina. El análisis es offline; solo las habilidad
 que necesitan una URL usan la red, y únicamente cuando se lo pides.
 
 Python 3.9+, licencia MIT. Otros idiomas: [English](README.md) · [Русский](README.ru.md)
+
+```console
+$ python skills/secret-scanner/engine.py .
+[secret-scanner] 2 potential secret(s) found:
+
+  CRITICAL   src/config.py:14:18
+             Stripe secret key [stripe-secret]  value=sk_l...k1L2 (len=32)
+  HIGH       src/config.py:12:11
+             AWS Access Key ID [aws-access-key-id]  value=AKIA...MPLE (len=20)
+
+Summary: critical=1, high=1
+```
+
+**Novedades en 1.1.0:** secret-scanner reconoce claves de Hugging Face,
+Replicate, Groq, Cohere y DigitalOcean, sast-lite señala el uso de `random`
+para generar tokens, y http-sec-audit incorpora `--advisory` para el
+aislamiento cross-origin. Detalles en el [changelog](CHANGELOG.md).
 
 ## Las habilidades
 
@@ -51,6 +72,10 @@ Usa `~/.claude/skills/` si las quieres en todos tus proyectos. Reinicia Claude
 Code y las descubrirá a partir de cada `SKILL.md`. No hay nada más que instalar
 en ninguno de los dos casos.
 
+Si acaban ganándose un sitio en tu configuración, una estrella ayuda a que las
+encuentre la siguiente persona. La instalación pasa por un clon, así que la
+estrella es lo único que ve el resto.
+
 ## Uso
 
 Basta con pedírselo a Claude:
@@ -79,19 +104,32 @@ python skills/dockerfile-scan/scanner.py Dockerfile
 python skills/cors-auditor/auditor.py https://api.example.com
 ```
 
-Así se ve una ejecución:
+## En CI
 
-```console
-$ python skills/secret-scanner/engine.py .
-[secret-scanner] 2 potential secret(s) found:
+Los motores son los mismos archivos que ejecuta Claude, así que un pipeline
+puede llamarlos directamente. No hay nada que instalar, por eso no hay paso
+`pip install`:
 
-  CRITICAL   src/config.py:14:18
-             Stripe secret key [stripe-secret]  value=sk_l...k1L2 (len=32)
-  HIGH       src/config.py:12:11
-             AWS Access Key ID [aws-access-key-id]  value=AKIA...MPLE (len=20)
+```yaml
+name: security
+on: [push, pull_request]
 
-Summary: critical=1, high=1
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Obtener las habilidades
+        run: git clone --depth 1 https://github.com/NovaCode37/claude-security-skills .skills
+      - name: Analizar
+        run: |
+          python .skills/skills/secret-scanner/engine.py .
+          python .skills/skills/sast-lite/analyzer.py . --min-severity high
+          python .skills/skills/dockerfile-scan/scanner.py Dockerfile
 ```
+
+Cada motor termina con `1` cuando reporta algo, así que el paso falla ante un
+hallazgo. Usa `--min-severity` para decidir qué merece romper la compilación.
 
 ## Pruebas
 
@@ -100,7 +138,7 @@ pip install pytest
 pytest skills/ -q
 ```
 
-208 pruebas, todas offline, en menos de un segundo.
+227 pruebas, todas offline, en menos de un segundo.
 
 ## Cómo está construido
 

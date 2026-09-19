@@ -1,5 +1,9 @@
 # Claude Security Skills
 
+[![CI](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/NovaCode37/claude-security-skills?style=flat-square&color=7c5cfc)](https://github.com/NovaCode37/claude-security-skills/releases)
+[![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
+
 Security skills for [Claude Code](https://claude.com/claude-code). Install them
 once and ask Claude, in plain language, to scan a repo for leaked secrets,
 review Python code, red-team an LLM for prompt injection, or audit HTTP headers,
@@ -11,6 +15,23 @@ nothing phoning home. The analysis runs offline; only the few skills that need
 to hit a URL use the network, and only when you ask them to.
 
 Python 3.9+, MIT licensed. Other languages: [Español](README.es.md) · [Русский](README.ru.md)
+
+```console
+$ python skills/secret-scanner/engine.py .
+[secret-scanner] 2 potential secret(s) found:
+
+  CRITICAL   src/config.py:14:18
+             Stripe secret key [stripe-secret]  value=sk_l...k1L2 (len=32)
+  HIGH       src/config.py:12:11
+             AWS Access Key ID [aws-access-key-id]  value=AKIA...MPLE (len=20)
+
+Summary: critical=1, high=1
+```
+
+**New in 1.1.0:** secret-scanner knows Hugging Face, Replicate, Groq, Cohere
+and DigitalOcean keys, sast-lite flags `random` used to build tokens, and
+http-sec-audit gained `--advisory` for cross-origin isolation. See the
+[changelog](CHANGELOG.md).
 
 ## The skills
 
@@ -82,19 +103,31 @@ python skills/dockerfile-scan/scanner.py Dockerfile
 python skills/cors-auditor/auditor.py https://api.example.com
 ```
 
-Here's what a run looks like:
+## In CI
 
-```console
-$ python skills/secret-scanner/engine.py .
-[secret-scanner] 2 potential secret(s) found:
+The engines are the same files Claude runs, so a pipeline can call them
+directly. Nothing to install, so there is no `pip install` step:
 
-  CRITICAL   src/config.py:14:18
-             Stripe secret key [stripe-secret]  value=sk_l...k1L2 (len=32)
-  HIGH       src/config.py:12:11
-             AWS Access Key ID [aws-access-key-id]  value=AKIA...MPLE (len=20)
+```yaml
+name: security
+on: [push, pull_request]
 
-Summary: critical=1, high=1
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fetch the skills
+        run: git clone --depth 1 https://github.com/NovaCode37/claude-security-skills .skills
+      - name: Scan
+        run: |
+          python .skills/skills/secret-scanner/engine.py .
+          python .skills/skills/sast-lite/analyzer.py . --min-severity high
+          python .skills/skills/dockerfile-scan/scanner.py Dockerfile
 ```
+
+Each engine exits `1` when it reports something, so the step fails on a
+finding. Raise `--min-severity` to decide what is worth failing over.
 
 ## Tests
 
@@ -103,7 +136,7 @@ pip install pytest
 pytest skills/ -q
 ```
 
-208 tests, all offline, run in under a second.
+227 tests, all offline, run in under a second.
 
 ## Design principles
 

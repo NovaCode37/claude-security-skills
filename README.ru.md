@@ -1,5 +1,9 @@
 # Claude Security Skills
 
+[![CI](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/NovaCode37/claude-security-skills/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/NovaCode37/claude-security-skills?style=flat-square&color=7c5cfc)](https://github.com/NovaCode37/claude-security-skills/releases)
+[![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
+
 Скиллы по безопасности для [Claude Code](https://claude.com/claude-code).
 Поставьте их один раз и просите Claude обычными словами: найти утёкшие секреты
 в репозитории, проверить питоновский код, погонять свой LLM на prompt injection,
@@ -11,6 +15,23 @@
 только когда вы их об этом просите.
 
 Python 3.9+, лицензия MIT. Другие языки: [English](README.md) · [Español](README.es.md)
+
+```console
+$ python skills/secret-scanner/engine.py .
+[secret-scanner] 2 potential secret(s) found:
+
+  CRITICAL   src/config.py:14:18
+             Stripe secret key [stripe-secret]  value=sk_l...k1L2 (len=32)
+  HIGH       src/config.py:12:11
+             AWS Access Key ID [aws-access-key-id]  value=AKIA...MPLE (len=20)
+
+Summary: critical=1, high=1
+```
+
+**Что нового в 1.1.0:** secret-scanner теперь знает ключи Hugging Face,
+Replicate, Groq, Cohere и DigitalOcean, sast-lite ругается на `random` в
+генерации токенов, а у http-sec-audit появился `--advisory` для проверок
+cross-origin изоляции. Подробности в [changelog](CHANGELOG.md).
 
 ## Скиллы
 
@@ -50,6 +71,10 @@ cp -r claude-security-skills/skills/* .claude/skills/
 Перезапустите Claude Code, и он найдёт скиллы по файлам `SKILL.md`. Больше
 ставить ничего не нужно ни при одном из способов.
 
+Если они приживутся у вас в работе, звезда помогает следующему человеку их
+найти. Установка идёт через клон, поэтому звезда это единственное, что видно
+со стороны.
+
 ## Как пользоваться
 
 Просто спросите Claude:
@@ -78,19 +103,31 @@ python skills/dockerfile-scan/scanner.py Dockerfile
 python skills/cors-auditor/auditor.py https://api.example.com
 ```
 
-Вот как выглядит запуск:
+## В CI
 
-```console
-$ python skills/secret-scanner/engine.py .
-[secret-scanner] 2 potential secret(s) found:
+Движки это те же самые файлы, которые запускает Claude, поэтому пайплайн может
+звать их напрямую. Ставить нечего, так что шага `pip install` здесь нет:
 
-  CRITICAL   src/config.py:14:18
-             Stripe secret key [stripe-secret]  value=sk_l...k1L2 (len=32)
-  HIGH       src/config.py:12:11
-             AWS Access Key ID [aws-access-key-id]  value=AKIA...MPLE (len=20)
+```yaml
+name: security
+on: [push, pull_request]
 
-Summary: critical=1, high=1
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Забрать скиллы
+        run: git clone --depth 1 https://github.com/NovaCode37/claude-security-skills .skills
+      - name: Проверка
+        run: |
+          python .skills/skills/secret-scanner/engine.py .
+          python .skills/skills/sast-lite/analyzer.py . --min-severity high
+          python .skills/skills/dockerfile-scan/scanner.py Dockerfile
 ```
+
+Каждый движок возвращает `1`, когда что-то нашёл, поэтому шаг падает на
+находке. Чем ограничиться, решает `--min-severity`.
 
 ## Тесты
 
@@ -99,7 +136,7 @@ pip install pytest
 pytest skills/ -q
 ```
 
-208 тестов, все офлайн, отрабатывают меньше чем за секунду.
+227 тестов, все офлайн, отрабатывают меньше чем за секунду.
 
 ## На чём это построено
 
