@@ -145,3 +145,65 @@ def test_filter_by_severity():
     assert audit.filter_by_severity(findings, "info") == findings
     assert all(f.severity in ("critical", "high")
                for f in audit.filter_by_severity(findings, "high"))
+
+
+# --- cross-origin isolation and Cache-Control (issues #36, #37) -------------
+
+ADVISORY_IDS = {"coop-missing", "coep-missing", "corp-missing",
+                "cache-control-missing"}
+
+ISOLATED_HEADERS = dict(
+    SECURE_HEADERS,
+    **{
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp",
+        "Cross-Origin-Resource-Policy": "same-origin",
+        "Cache-Control": "no-store",
+    },
+)
+
+
+def test_advisory_checks_are_off_by_default():
+    """A reported finding fails the run, so these stay opt-in (issue #46)."""
+    assert not (ids(SECURE_HEADERS, SECURE_COOKIE) & ADVISORY_IDS)
+
+
+def test_advisory_flags_missing_cross_origin_headers():
+    found = ids(SECURE_HEADERS, SECURE_COOKIE)
+    assert not (found & ADVISORY_IDS)
+    with_advisory = {
+        f.id for f in audit.audit_headers(SECURE_HEADERS, SECURE_COOKIE,
+                                          advisory=True)
+    }
+    assert ADVISORY_IDS <= with_advisory
+
+
+def test_advisory_clean_when_headers_present():
+    found = audit.audit_headers(ISOLATED_HEADERS, SECURE_COOKIE, advisory=True)
+    assert found == [], [f.to_dict() for f in found]
+
+
+def test_advisory_findings_are_info_severity():
+    found = audit.audit_headers(SECURE_HEADERS, SECURE_COOKIE, advisory=True)
+    assert {f.severity for f in found} == {"info"}
+
+
+def test_cli_missing_only_advisory_headers_exits_zero(tmp_path, capsys):
+    """Without the flag, a site that only lacks COOP/COEP/CORP is clean."""
+    f = tmp_path / "h.txt"
+    f.write_text(
+        "HTTP/1.1 200 OK\n"
+        "Content-Security-Policy: default-src 'self'; frame-ancestors 'none'\n"
+        "Strict-Transport-Security: max-age=31536000; includeSubDomains\n"
+        "X-Content-Type-Options: nosniff\n"
+        "Referrer-Policy: strict-origin-when-cross-origin\n"
+        "Permissions-Policy: camera=(), microphone=()\n"
+    )
+    rc = audit.main(["--headers-file", str(f), "--json"])
+    assert json.loads(capsys.readouterr().out) == []
+    assert rc == 0
+
+    rc = audit.main(["--headers-file", str(f), "--advisory", "--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert {d["id"] for d in data} == ADVISORY_IDS
+    assert rc == 1

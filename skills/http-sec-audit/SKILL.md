@@ -46,6 +46,11 @@ python skills/http-sec-audit/audit.py --headers-file response_headers.txt
 # Only fail CI on high/critical (a missing Permissions-Policy is LOW and
 # shows up on almost every site)
 python skills/http-sec-audit/audit.py https://example.com --min-severity high
+
+# Also check cross-origin isolation (COOP/COEP/CORP) and Cache-Control.
+# Off by default: most sites have good reasons not to set these, and a
+# reported finding fails the run.
+python skills/http-sec-audit/audit.py https://example.com --advisory
 ```
 
 **Exit codes:** `0` clean · `1` findings reported · `2` fetch/usage error.

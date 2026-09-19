@@ -22,7 +22,7 @@ def _lower_keys(headers: dict) -> dict:
     return {str(k).lower(): str(v) for k, v in headers.items()}
 
 def audit_headers(headers: dict, cookies: list[str] | None = None,
-                  is_https: bool = True) -> list[Finding]:
+                  is_https: bool = True, advisory: bool = False) -> list[Finding]:
     h = _lower_keys(headers)
     cookies = cookies or []
     findings: list[Finding] = []
@@ -80,6 +80,28 @@ def audit_headers(headers: dict, cookies: list[str] | None = None,
         miss("permissions-missing", "low", "Permissions-Policy",
              "No Permissions-Policy — powerful browser features unrestricted.",
              "Set a Permissions-Policy limiting camera, microphone, geolocation, etc.")
+
+    if advisory:
+        for header, id_, purpose in (
+                ("cross-origin-opener-policy", "coop-missing",
+                 "isolates this page from cross-origin windows"),
+                ("cross-origin-embedder-policy", "coep-missing",
+                 "controls which cross-origin resources may be embedded"),
+                ("cross-origin-resource-policy", "corp-missing",
+                 "controls which origins may embed this resource")):
+            if header not in h:
+                title = "-".join(w.capitalize() for w in header.split("-"))
+                miss(id_, "info", title,
+                     f"No {title} — {purpose}.",
+                     f"Set {title} if this response needs cross-origin "
+                     "isolation. Plenty of sites have good reasons not to.")
+
+        if "cache-control" not in h:
+            miss("cache-control-missing", "info", "Cache-Control",
+                 "No Cache-Control — caching is left to heuristics, which is "
+                 "a problem only if the response carries private data.",
+                 "Send Cache-Control: no-store on responses with sensitive "
+                 "data. Static public pages do not need it.")
 
     for banner in ("server", "x-powered-by", "x-aspnet-version"):
         if banner in h and any(ch.isdigit() for ch in h[banner]):
@@ -190,6 +212,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--min-severity", default="info", choices=list(SEV_RANK),
                    help="report findings at or above this severity "
                         "(default: info, i.e. report everything)")
+    p.add_argument("--advisory", action="store_true",
+                   help="also check cross-origin isolation (COOP/COEP/CORP) "
+                        "and Cache-Control. Off by default: these are "
+                        "advisory, and a reported finding fails the run")
     args = p.parse_args(argv)
 
     if args.headers_file:
@@ -213,7 +239,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     findings = filter_by_severity(
-        audit_headers(headers, cookies, is_https=is_https), args.min_severity)
+        audit_headers(headers, cookies, is_https=is_https,
+                      advisory=args.advisory), args.min_severity)
     if args.json:
         print(json.dumps([f.to_dict() for f in findings], indent=2))
     else:
