@@ -50,6 +50,10 @@ Use `~/.claude/skills/` instead to have them in every project. Restart Claude
 Code and it discovers them from each `SKILL.md`. There's nothing else to
 install either way.
 
+If they end up earning their place in your setup, a star helps the next person
+find them. Installing goes through a clone, so a star is the only part anyone
+else can see.
+
 ## Usage
 
 Just ask Claude. For example:
