@@ -45,6 +45,14 @@ def test_looks_like_secret_accepts_real():
     ("anthropic-key", "sk-ant-" + "a1B2c3D4e5F6g7H8i9J0k1L2"),
     ("mailgun-api-token", "mailgun_token = 'key-" + ("a1b2" * 8) + "'"),
     ("postmark-api-token", "postmark_server_key = 'key-" + ("1a2b" * 8) + "'"),
+    ("huggingface-token", "hf_" + "aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3z"),
+    ("replicate-token", "r8_" + ("a1B2c3D4e5" * 4)),
+    ("groq-key", "gsk_" + ("a1B2c3D4e5" * 5) + "fG"),
+    # Split so the fixture is not a contiguous 40-character run: GitHub's own
+    # push protection reads one as a live Cohere key and blocks the push.
+    ("cohere-key",
+     "cohere_api_key = '" + "aB3dE5fG7hJ9kL1mN3pQ" + "5rS7tU9vW1xY3zA5bC7d" + "'"),
+    ("digitalocean-pat", "dop_v1_" + ("a1b2c3d4" * 8)),
 ])
 def test_rule_detects(rule_id, sample):
     findings = engine.scan_text(sample, "f.py", 3.5, True)
@@ -58,6 +66,21 @@ def test_service_tokens_require_provider_keyword():
         f.rule_id not in {"mailgun-api-token", "postmark-api-token"}
         for f in findings
     )
+
+
+def test_cohere_key_requires_the_provider_keyword():
+    """40 alphanumerics is not a shape, so the rule is anchored on the word."""
+    findings = engine.scan_text(
+        "value = '" + "aB3dE5fG7hJ9kL1mN3pQ" + "5rS7tU9vW1xY3zA5bC7d" + "'",
+        "f.py", 3.5, True)
+    assert all(f.rule_id != "cohere-key" for f in findings)
+
+
+def test_digitalocean_pat_does_not_fire_on_plain_hex():
+    """A 64-character hex digest, a git SHA pair, anything: no dop_v1_ prefix."""
+    findings = engine.scan_text(
+        "digest = '" + ("a1b2c3d4" * 8) + "'", "f.py", 3.5, True)
+    assert all(f.rule_id != "digitalocean-pat" for f in findings)
 
 
 def test_private_key_block_detected():

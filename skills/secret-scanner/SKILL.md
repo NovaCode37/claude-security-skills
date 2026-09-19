@@ -12,8 +12,9 @@ license: MIT
 
 A dependency-free engine that finds committed credentials by combining
 **high-signal vendor regex rules** (AWS, GitHub, GCP, Stripe, OpenAI,
-Anthropic, Slack, …) with **Shannon-entropy gating** to catch generic
-secrets while keeping false positives low.
+Anthropic, Hugging Face, Replicate, Groq, Cohere, DigitalOcean, Slack, …)
+with **Shannon-entropy gating** to catch generic secrets while keeping
+false positives low.
 
 ## When to use this skill
 
