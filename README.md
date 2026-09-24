@@ -60,6 +60,13 @@ As a plugin, from inside Claude Code:
 
 All eight skills arrive together and update with the marketplace.
 
+Or with the `skills` CLI, which installs into Cursor, Codex, Copilot and the
+other agents as well as Claude Code:
+
+```bash
+npx skills add NovaCode37/claude-security-skills
+```
+
 Or copy them in by hand, which works the same way:
 
 ```bash

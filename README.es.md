@@ -61,6 +61,13 @@ Como plugin, desde dentro de Claude Code:
 
 Las ocho habilidades llegan juntas y se actualizan con el marketplace.
 
+O con la CLI `skills`, que las instala en Cursor, Codex, Copilot y los demás
+agentes además de Claude Code:
+
+```bash
+npx skills add NovaCode37/claude-security-skills
+```
+
 O cópialas a mano, que funciona igual:
 
 ```bash

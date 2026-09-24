@@ -60,6 +60,13 @@ cross-origin изоляции. Подробности в [changelog](CHANGELOG.m
 
 Все восемь скиллов приезжают вместе и обновляются вместе с маркетплейсом.
 
+Либо через CLI `skills`, который ставит их не только в Claude Code, но и в
+Cursor, Codex, Copilot и остальные агенты:
+
+```bash
+npx skills add NovaCode37/claude-security-skills
+```
+
 Либо скопировать руками, работает так же:
 
 ```bash
