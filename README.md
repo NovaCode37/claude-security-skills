@@ -129,6 +129,34 @@ jobs:
 Each engine exits `1` when it reports something, so the step fails on a
 finding. Raise `--min-severity` to decide what is worth failing over.
 
+## Before committing
+
+Add these hooks to your repository's `.pre-commit-config.yaml`, replacing
+`<reviewed-commit-sha>` with the full commit SHA you reviewed from this repository:
+
+```yaml
+repos:
+  - repo: https://github.com/NovaCode37/claude-security-skills
+    rev: <reviewed-commit-sha>
+    hooks:
+      - id: secret-scanner
+      - id: sast-lite
+        args: [--min-severity, high]
+```
+
+Run `pip install pre-commit` and `pre-commit install` in your repository. The hooks
+receive staged file paths (including multiple paths); they do not scan the whole
+tree. `secret-scanner` handles text files and `sast-lite` handles Python files.
+The framework installs the two standard-library engines in an isolated environment,
+so their entry points work from your repository, not just the toolkit checkout.
+The first installation needs package downloads; scanning itself stays offline.
+
+To try a local checkout before adopting it, run
+`pre-commit try-repo /path/to/claude-security-skills --all-files` in a separate test
+repository. Findings exit non-zero and block the commit; clean staged files pass.
+A hook is a convenience, not an enforcement boundary: `--no-verify` bypasses it.
+Keep the CI checks above enabled, and rotate any real key that was already exposed.
+
 ## Tests
 
 ```bash
