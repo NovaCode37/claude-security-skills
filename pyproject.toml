@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-security-skills-hooks"
+version = "0.1.0"
+description = "Offline secret-scanner and sast-lite pre-commit entry points"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+secret-scanner = "secret_scanner.engine:main"
+sast-lite = "sast_lite.analyzer:main"
+
+[tool.setuptools]
+packages = ["secret_scanner", "sast_lite"]
+
+[tool.setuptools.package-dir]
+secret_scanner = "skills/secret-scanner"
+sast_lite = "skills/sast-lite"

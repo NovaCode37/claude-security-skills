@@ -1,0 +1,12 @@
+- id: secret-scanner
+  name: Scan staged files for committed secrets
+  entry: secret-scanner
+  language: python
+  types: [text]
+  pass_filenames: true
+- id: sast-lite
+  name: Scan staged Python files for security issues
+  entry: sast-lite
+  language: python
+  types: [python]
+  pass_filenames: true
