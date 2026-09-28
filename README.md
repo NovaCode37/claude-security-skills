@@ -28,9 +28,9 @@ $ python skills/secret-scanner/engine.py .
 Summary: critical=1, high=1
 ```
 
-**New in 1.1.0:** secret-scanner knows Hugging Face, Replicate, Groq, Cohere
-and DigitalOcean keys, sast-lite flags `random` used to build tokens, and
-http-sec-audit gained `--advisory` for cross-origin isolation. See the
+**New in 1.2.0:** secret-scanner and sast-lite ship as pre-commit hooks, so
+they can block a bad commit before it lands, and `npx skills add` installs the
+whole set into Claude Code, Cursor, Codex and Copilot. See the
 [changelog](CHANGELOG.md).
 
 ## The skills
@@ -171,7 +171,7 @@ pip install pytest
 pytest skills/ -q
 ```
 
-227 tests, all offline, run in under a second.
+229 tests, all offline, run in under a second.
 
 ## Design principles
 

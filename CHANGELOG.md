@@ -6,6 +6,17 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.0] — 2026-09-28
+
+### Added
+- **secret-scanner and sast-lite as pre-commit hooks.** Both engines already took several paths, so they now run over the staged files and stop a commit before a leaked key or a dangerous call lands, instead of catching it later in CI. The hooks are console entry points backed by minimal packaging metadata, so they resolve from a separate checkout and add no runtime dependencies. `.pre-commit-hooks.yaml` and a pinned-revision config, with the local hook being bypassable and CI being the enforcement, are in the README (#55, #56).
+- **`npx skills add` as an install path.** The repo is laid out as `skills/<name>/SKILL.md`, which is exactly what the skills CLI expects, so one command installs all eight into Claude Code, Cursor, Codex and Copilot. Checked against a clean directory.
+
+### Changed
+- README leads with the terminal sample and the CI angle, since running these in a pipeline is what sets them apart from a prompt collection. Test count is 229.
+
+---
+
 ## [1.1.0] — 2026-09-19
 
 ### Added
