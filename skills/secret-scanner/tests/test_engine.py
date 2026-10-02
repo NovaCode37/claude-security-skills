@@ -101,6 +101,40 @@ def test_generic_password_detected():
     assert any(f.rule_id == "generic-password" for f in findings)
 
 
+@pytest.mark.parametrize("assignment", ["api_key", "password"])
+@pytest.mark.parametrize("use_entropy", [True, False])
+def test_provider_assignment_is_reported_once(tmp_path, assignment, use_entropy):
+    key = "sk-proj-" + "a1B2c3D4e5F6g7H8i9J0k1L2"
+    path = tmp_path / "config.py"
+    path.write_text(f'{assignment} = "{key}"\n')
+    findings = engine.scan_paths([str(path)], use_entropy=use_entropy)
+    assert [finding.rule_id for finding in findings] == ["openai-key"]
+    assert key not in findings[0].secret
+
+
+def test_provider_and_unrelated_generic_secret_are_both_reported(tmp_path):
+    key = "sk-proj-" + "a1B2c3D4e5F6g7H8i9J0k1L2"
+    path = tmp_path / "config.py"
+    path.write_text(f'api_key = "{key}"; secret = "f3Kd9Lm2Qx8Zp1Rt7Vw4Bn6"\n')
+    findings = engine.scan_paths([str(path)])
+    assert [finding.rule_id for finding in findings] == ["openai-key", "generic-secret"]
+
+
+def test_generic_secret_on_another_line_is_not_suppressed():
+    key = "sk-proj-" + "a1B2c3D4e5F6g7H8i9J0k1L2"
+    findings = engine.scan_text(f'{key}\nsecret = "f3Kd9Lm2Qx8Zp1Rt7Vw4Bn6"',
+                                "config.py", 3.5, True)
+    assert [finding.rule_id for finding in findings] == ["openai-key", "generic-secret"]
+
+
+def test_specific_rule_wins_even_when_generic_rule_runs_first(monkeypatch):
+    monkeypatch.setattr(engine, "RULES", list(reversed(engine.RULES)))
+    key = "eyJ" + "aB3dE5fG7hJ9" + ".eyJ" + "kL1mN3pQ5rS7" + ".tU9vW1xY3zA5"
+    findings = engine.scan_text(f'token = "{key}"', "config.py", 3.5, True)
+    assert [finding.rule_id for finding in findings] == ["jwt"]
+    assert findings[0].severity == "low"
+
+
 def test_placeholder_not_flagged():
     text = textwrap.dedent("""
         api_key = "your_api_key_here"
