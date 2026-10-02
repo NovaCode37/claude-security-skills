@@ -197,6 +197,7 @@ def scan_text(text: str, path: str, min_entropy: float,
         if len(line) > MAX_LINE_LEN:
             continue
         lower = line.lower()
+        line_findings: list[tuple[Finding, str]] = []
         for rule in RULES:
             if rule.keywords and not any(k in lower for k in rule.keywords):
                 continue
@@ -208,7 +209,7 @@ def scan_text(text: str, path: str, min_entropy: float,
                         continue
                 if PLACEHOLDER_RE.search(value) and rule.id not in NO_ENTROPY_RULES:
                     continue
-                findings.append(Finding(
+                line_findings.append((Finding(
                     rule_id=rule.id,
                     description=rule.description,
                     severity=rule.severity,
@@ -217,7 +218,15 @@ def scan_text(text: str, path: str, min_entropy: float,
                     column=m.start(rule.secret_group) + 1 if rule.secret_group else m.start() + 1,
                     secret=_redact(value),
                     entropy=round(ent, 2),
-                ))
+                ), value))
+        specific_values = {
+            value for finding, value in line_findings
+            if not finding.rule_id.startswith("generic-")
+        }
+        findings.extend(
+            finding for finding, value in line_findings
+            if not finding.rule_id.startswith("generic-") or value not in specific_values
+        )
     return findings
 
 
