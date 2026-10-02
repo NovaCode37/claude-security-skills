@@ -223,3 +223,41 @@ def test_md5_not_for_security_not_flagged():
 
 def test_md5_for_security_still_flagged():
     assert "py.weak-hash" in ids("import hashlib\nhashlib.md5(data, usedforsecurity=True)")
+
+
+@pytest.mark.parametrize("method", ["get", "post", "put", "patch", "delete", "head", "options", "request"])
+@pytest.mark.parametrize("receiver", ["requests", "requests.Session()", "session"])
+@pytest.mark.parametrize("arguments", ["url", "url, timeout=None"])
+def test_requests_without_timeout_flagged(method, receiver, arguments):
+    src = f"import requests\nsession = requests.Session()\n{receiver}.{method}({arguments})"
+    issues = [i for i in analyzer.analyze_source(src) if i.rule_id == "py.request-no-timeout"]
+    assert len(issues) == 1
+    assert issues[0].cwe == "CWE-400"
+    assert issues[0].severity == "medium"
+
+
+@pytest.mark.parametrize("arguments", ["url, timeout=5", "url, timeout=(3, 10)", "url, **kwargs", "url, timeout=None, **kwargs"])
+def test_requests_with_timeout_or_unknown_kwargs_not_flagged(arguments):
+    assert "py.request-no-timeout" not in ids(f"requests.get({arguments})")
+
+
+def test_unrelated_get_call_not_flagged():
+    assert "py.request-no-timeout" not in ids("cache.get(key)\nclient.get(url)")
+
+
+def test_requests_alias_and_assigned_session_flagged():
+    src = "import requests as http\nclient = http.Session()\nclient.get(url)\nhttp.post(url)"
+    assert sum(i.rule_id == "py.request-no-timeout" for i in analyzer.analyze_source(src)) == 2
+
+
+def test_request_timeout_sarif_metadata():
+    report = analyzer.to_sarif(analyzer.analyze_source("requests.get(url)", "example.py"))
+    run = report["runs"][0]
+    rule = next(r for r in run["tool"]["driver"]["rules"] if r["id"] == "py.request-no-timeout")
+    assert rule["shortDescription"]["text"] == "HTTP request without a timeout"
+    assert run["results"][0]["level"] == "warning"
+
+
+def test_reassigned_session_is_not_treated_as_requests():
+    src = "import requests\nclient = requests.Session()\nclient = cache\nclient.get(key)"
+    assert "py.request-no-timeout" not in ids(src)
