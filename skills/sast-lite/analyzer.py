@@ -74,6 +74,7 @@ SECURITY_VALUE_NAMES = (
 RANDOM_BARE_FUNCS = {"random", "randint", "randrange", "getrandbits", "uniform"}
 
 OS_SHELL_FUNCS = {"system", "popen"}
+REQUEST_METHODS = {"get", "post", "put", "patch", "delete", "head", "options", "request"}
 
 
 def _random_call(node: ast.AST) -> str:
@@ -100,11 +101,15 @@ class SecurityVisitor(ast.NodeVisitor):
         self.issues: list[Issue] = []
         self.os_aliases: set[str] = {"os"}
         self.os_shell_funcs: set[str] = set()
+        self.requests_aliases: set[str] = {"requests"}
+        self.requests_sessions: set[str] = set()
 
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
             if alias.name == "os":
                 self.os_aliases.add(alias.asname or "os")
+            elif alias.name == "requests":
+                self.requests_aliases.add(alias.asname or "requests")
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
@@ -120,6 +125,14 @@ class SecurityVisitor(ast.NodeVisitor):
             return head in self.os_aliases and fn in OS_SHELL_FUNCS
         return target in self.os_shell_funcs
 
+    def _is_requests_session(self, node: ast.AST) -> bool:
+        if isinstance(node, ast.Name):
+            return node.id in self.requests_sessions
+        if isinstance(node, ast.Call):
+            head, _, name = _attr_chain(node.func).rpartition(".")
+            return head in self.requests_aliases and name in ("Session", "session")
+        return False
+
     def _add(self, node: ast.AST, rule_id: str, cwe: str, msg: str, sev: str):
         line = getattr(node, "lineno", 0)
         col = getattr(node, "col_offset", 0)
@@ -134,6 +147,19 @@ class SecurityVisitor(ast.NodeVisitor):
         elif isinstance(node.func, ast.Attribute):
             target = _attr_chain(node.func)
         last = target.split(".")[-1] if target else ""
+
+        if isinstance(node.func, ast.Attribute) and node.func.attr in REQUEST_METHODS:
+            receiver = node.func.value
+            is_requests = (
+                isinstance(receiver, ast.Name) and receiver.id in self.requests_aliases
+            ) or self._is_requests_session(receiver)
+            timeout = _kw(node, "timeout")
+            unknown_kwargs = any(kw.arg is None for kw in node.keywords)
+            if is_requests and not unknown_kwargs and (
+                    timeout is None or isinstance(timeout, ast.Constant) and timeout.value is None):
+                self._add(node, "py.request-no-timeout", "CWE-400",
+                          "HTTP request has no timeout; a stalled server can "
+                          "block indefinitely. Set a finite timeout.", "medium")
 
         if target in ("eval", "exec") or last in ("eval", "exec"):
             dynamic = bool(node.args) and not _is_string_constant(node.args[0])
@@ -230,6 +256,13 @@ class SecurityVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign):
+        is_session = self._is_requests_session(node.value)
+        for tgt in node.targets:
+            if isinstance(tgt, ast.Name):
+                if is_session:
+                    self.requests_sessions.add(tgt.id)
+                else:
+                    self.requests_sessions.discard(tgt.id)
         if _is_string_constant(node.value) and node.value.value:
             for tgt in node.targets:
                 name = tgt.id if isinstance(tgt, ast.Name) else (
@@ -295,6 +328,7 @@ RULE_TITLES = {
     "py.yaml-load": "yaml.load() without SafeLoader",
     "py.weak-hash": "Weak hash (MD5 or SHA-1)",
     "py.tls-verify-disabled": "TLS certificate verification disabled",
+    "py.request-no-timeout": "HTTP request without a timeout",
     "py.insecure-temp": "Race-prone temporary file",
     "py.flask-debug": "Flask debug mode",
     "py.jinja-autoescape": "Jinja2 autoescape disabled",
