@@ -193,3 +193,33 @@ def test_cli_json(tmp_path, capsys):
     import json
     data = json.loads(capsys.readouterr().out)
     assert data and data[0]["cwe"]
+
+
+def test_platform_system_not_flagged():
+    assert "py.os-system" not in ids("import platform\nplatform.system()")
+
+
+def test_other_dot_system_not_flagged():
+    assert "py.os-system" not in ids("client.system('status')\nos_info.popen()")
+
+
+def test_os_alias_flagged():
+    assert "py.os-system" in ids("import os as o\no.system(cmd)")
+
+
+def test_from_os_import_flagged():
+    assert "py.os-system" in ids("from os import system\nsystem(cmd)")
+    assert "py.os-system" in ids("from os import popen as run_shell\nrun_shell(cmd)")
+
+
+def test_bare_system_without_os_import_not_flagged():
+    assert "py.os-system" not in ids("system(cmd)")
+
+
+def test_md5_not_for_security_not_flagged():
+    assert "py.weak-hash" not in ids(
+        "import hashlib\nhashlib.md5(data, usedforsecurity=False)")
+
+
+def test_md5_for_security_still_flagged():
+    assert "py.weak-hash" in ids("import hashlib\nhashlib.md5(data, usedforsecurity=True)")

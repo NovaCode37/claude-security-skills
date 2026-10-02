@@ -73,6 +73,8 @@ SECURITY_VALUE_NAMES = (
 
 RANDOM_BARE_FUNCS = {"random", "randint", "randrange", "getrandbits", "uniform"}
 
+OS_SHELL_FUNCS = {"system", "popen"}
+
 
 def _random_call(node: ast.AST) -> str:
     """Return the name of a `random` call, or "" for anything else.
@@ -96,6 +98,27 @@ class SecurityVisitor(ast.NodeVisitor):
         self.path = path
         self.lines = source_lines
         self.issues: list[Issue] = []
+        self.os_aliases: set[str] = {"os"}
+        self.os_shell_funcs: set[str] = set()
+
+    def visit_Import(self, node: ast.Import):
+        for alias in node.names:
+            if alias.name == "os":
+                self.os_aliases.add(alias.asname or "os")
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        if node.module == "os":
+            for alias in node.names:
+                if alias.name in OS_SHELL_FUNCS:
+                    self.os_shell_funcs.add(alias.asname or alias.name)
+        self.generic_visit(node)
+
+    def _is_os_shell_call(self, target: str) -> bool:
+        head, _, fn = target.rpartition(".")
+        if head:
+            return head in self.os_aliases and fn in OS_SHELL_FUNCS
+        return target in self.os_shell_funcs
 
     def _add(self, node: ast.AST, rule_id: str, cwe: str, msg: str, sev: str):
         line = getattr(node, "lineno", 0)
@@ -122,11 +145,10 @@ class SecurityVisitor(ast.NodeVisitor):
                       "compile() of dynamic source can lead to code execution.",
                       "medium")
 
-        if target in ("os.system", "os.popen") or last in ("system", "popen"):
-            if target.startswith("os.") or last in ("system", "popen"):
-                self._add(node, "py.os-system", "CWE-78",
-                          f"{target or last}() invokes a shell — command "
-                          f"injection risk.", "high")
+        if self._is_os_shell_call(target):
+            self._add(node, "py.os-system", "CWE-78",
+                      f"{target}() invokes a shell — command "
+                      f"injection risk.", "high")
 
         if "subprocess" in target or last in (
                 "call", "run", "Popen", "check_output", "check_call"):
@@ -155,7 +177,8 @@ class SecurityVisitor(ast.NodeVisitor):
                           "arbitrary objects; use yaml.safe_load().", "high")
 
         if last in ("md5", "sha1") and (
-                "hashlib" in target or target in ("md5", "sha1")):
+                "hashlib" in target or target in ("md5", "sha1")) and not (
+                _is_const_false(_kw(node, "usedforsecurity"))):
             self._add(node, "py.weak-hash", "CWE-327",
                       f"{last} is cryptographically broken; use SHA-256+.",
                       "medium")
