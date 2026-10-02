@@ -28,10 +28,10 @@ $ python skills/secret-scanner/engine.py .
 Summary: critical=1, high=1
 ```
 
-**New in 1.2.0:** secret-scanner and sast-lite ship as pre-commit hooks, so
-they can block a bad commit before it lands, and `npx skills add` installs the
-whole set into Claude Code, Cursor, Codex and Copilot. See the
-[changelog](CHANGELOG.md).
+**New in 1.3.0:** a GitHub Action, `uses: NovaCode37/claude-security-skills@v1`,
+and SARIF output, so secret-scanner and sast-lite findings land in the
+Security tab and on the line of the pull request diff that caused them. See
+the [changelog](CHANGELOG.md).
 
 ## The skills
 
@@ -112,8 +112,54 @@ python skills/cors-auditor/auditor.py https://api.example.com
 
 ## In CI
 
-The engines are the same files Claude runs, so a pipeline can call them
-directly. Nothing to install, so there is no `pip install` step:
+The shortest way is the GitHub Action. It runs the engines, writes a
+findings table to the job summary, and with SARIF the findings show up in
+the Security tab and on the exact line of the pull request diff:
+
+```yaml
+name: security
+on: [push, pull_request]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - id: skills
+        uses: NovaCode37/claude-security-skills@v1
+        with:
+          skills: secret-scanner,sast-lite,dockerfile-scan
+          min-severity: medium
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: ${{ steps.skills.outputs.sarif-dir }}
+```
+
+| Input | Default | |
+|---|---|---|
+| `skills` | `secret-scanner,sast-lite` | Any of `secret-scanner`, `sast-lite`, `dependency-check`, `dockerfile-scan` |
+| `path` | `.` | What to scan; space-separated for several paths |
+| `min-severity` | `info` | Applies to `sast-lite` and `dependency-check` |
+| `sarif` | `true` | Write SARIF for the engines that support it |
+
+Outputs are `findings`, the total count, and `sarif-dir`. A finding fails
+the step, the same contract as the engines; if you want the run to carry
+on, set `continue-on-error` on the step rather than expecting the action to
+swallow it. `secret-scanner` and `sast-lite` produce SARIF today. The
+SARIF from `secret-scanner` never contains the secret or the line it sits
+on, only the file, line and column, because the file is uploaded to GitHub.
+
+Pin `@v1` to follow compatible releases, or a full tag such as `@v1.3.0`
+or a commit SHA to stay put.
+
+Without the action, the engines are the same files Claude runs, so a
+pipeline can call them directly. Nothing to install, so there is no
+`pip install` step:
 
 ```yaml
 name: security
@@ -171,7 +217,7 @@ pip install pytest
 pytest skills/ -q
 ```
 
-229 tests, all offline, run in under a second.
+241 tests, all offline, run in under a second.
 
 ## Design principles
 

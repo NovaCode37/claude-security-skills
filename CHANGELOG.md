@@ -6,6 +6,18 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.0] — 2026-10-02
+
+### Added
+- **A GitHub Action.** `uses: NovaCode37/claude-security-skills@v1` runs `secret-scanner`, `sast-lite`, `dependency-check` and `dockerfile-scan` against a checkout, writes a findings table to the job summary and outputs the count. A finding fails the step, the same contract as the engines; the action never swallows the exit code, so carrying on after a finding is the caller's `continue-on-error` decision. Inputs reach the script through environment variables rather than being interpolated into the shell command, so a crafted input cannot inject a command (#57).
+- **SARIF 2.1.0 output** with `--sarif` on `secret-scanner` and `sast-lite`, validated against the official schema in the test suite. Uploaded with `github/codeql-action/upload-sarif`, findings appear in the Security tab and on the line of the pull request diff. Rules carry a CWE tag and a `security-severity`, so GitHub ranks them. The `secret-scanner` SARIF never includes the secret, redacted or not, or a snippet of the line, only file, line and column, because that file is uploaded to GitHub. `dependency-check` and `dockerfile-scan` do not emit SARIF yet; URL- and token-based engines are out of scope, since a finding about a URL has no file to point at (#49).
+
+### Fixed
+- **`sast-lite` flagged `platform.system()` as a shell call** at high severity, which failed any build that used `--min-severity high` and checked the OS. The rule matched any call ending in `.system` or `.popen`. It now tracks how `os` was imported, including `import os as o` and `from os import system as run`, and only flags those.
+- **`sast-lite` flagged `hashlib.md5(..., usedforsecurity=False)`** as a weak hash. That argument is how Python 3.9+ marks a hash as not used for security, so it is no longer reported.
+
+---
+
 ## [1.2.0] — 2026-09-28
 
 ### Added

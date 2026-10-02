@@ -29,10 +29,10 @@ $ python skills/secret-scanner/engine.py .
 Summary: critical=1, high=1
 ```
 
-**Novedades en 1.1.0:** secret-scanner reconoce claves de Hugging Face,
-Replicate, Groq, Cohere y DigitalOcean, sast-lite señala el uso de `random`
-para generar tokens, y http-sec-audit incorpora `--advisory` para el
-aislamiento cross-origin. Detalles en el [changelog](CHANGELOG.md).
+**Novedades en 1.3.0:** una GitHub Action,
+`uses: NovaCode37/claude-security-skills@v1`, y salida SARIF, así que los
+hallazgos de secret-scanner y sast-lite aparecen en la pestaña Security y en la
+línea exacta del diff del pull request. Detalles en el [changelog](CHANGELOG.md).
 
 ## Las habilidades
 
@@ -113,9 +113,45 @@ python skills/cors-auditor/auditor.py https://api.example.com
 
 ## En CI
 
-Los motores son los mismos archivos que ejecuta Claude, así que un pipeline
-puede llamarlos directamente. No hay nada que instalar, por eso no hay paso
-`pip install`:
+Lo más corto es la GitHub Action. Ejecuta los motores, escribe una tabla de
+hallazgos en el resumen del job y, con SARIF, los hallazgos aparecen en la
+pestaña Security y en la línea exacta del diff del pull request:
+
+```yaml
+name: security
+on: [push, pull_request]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - id: skills
+        uses: NovaCode37/claude-security-skills@v1
+        with:
+          skills: secret-scanner,sast-lite,dockerfile-scan
+          min-severity: medium
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: ${{ steps.skills.outputs.sarif-dir }}
+```
+
+Entradas: `skills` (por defecto `secret-scanner,sast-lite`; disponibles
+`secret-scanner`, `sast-lite`, `dependency-check`, `dockerfile-scan`), `path`
+(por defecto `.`), `min-severity` (para `sast-lite` y `dependency-check`) y
+`sarif` (por defecto `true`). Salidas: `findings`, con el número de hallazgos,
+y `sarif-dir`. Un hallazgo hace fallar el paso, igual que los motores. El SARIF
+de `secret-scanner` nunca incluye el secreto ni la línea donde está, solo el
+archivo, la línea y la columna, porque ese archivo se sube a GitHub.
+
+Sin la Action, los motores son los mismos archivos que ejecuta Claude, así que
+un pipeline puede llamarlos directamente. No hay nada que instalar, por eso no
+hay paso `pip install`:
 
 ```yaml
 name: security
@@ -145,7 +181,7 @@ pip install pytest
 pytest skills/ -q
 ```
 
-227 pruebas, todas offline, en menos de un segundo.
+241 pruebas, todas offline, en menos de un segundo.
 
 ## Cómo está construido
 

@@ -28,10 +28,10 @@ $ python skills/secret-scanner/engine.py .
 Summary: critical=1, high=1
 ```
 
-**Что нового в 1.1.0:** secret-scanner теперь знает ключи Hugging Face,
-Replicate, Groq, Cohere и DigitalOcean, sast-lite ругается на `random` в
-генерации токенов, а у http-sec-audit появился `--advisory` для проверок
-cross-origin изоляции. Подробности в [changelog](CHANGELOG.md).
+**Что нового в 1.3.0:** GitHub Action,
+`uses: NovaCode37/claude-security-skills@v1`, и вывод в SARIF: находки
+secret-scanner и sast-lite появляются во вкладке Security и на той строке
+диффа пулл-реквеста, которая их вызвала. Подробности в [changelog](CHANGELOG.md).
 
 ## Скиллы
 
@@ -112,8 +112,44 @@ python skills/cors-auditor/auditor.py https://api.example.com
 
 ## В CI
 
-Движки это те же самые файлы, которые запускает Claude, поэтому пайплайн может
-звать их напрямую. Ставить нечего, так что шага `pip install` здесь нет:
+Проще всего через GitHub Action. Он запускает движки, пишет таблицу находок в
+сводку джобы, а с SARIF находки появляются во вкладке Security и прямо на
+нужной строке в диффе пулл-реквеста:
+
+```yaml
+name: security
+on: [push, pull_request]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - id: skills
+        uses: NovaCode37/claude-security-skills@v1
+        with:
+          skills: secret-scanner,sast-lite,dockerfile-scan
+          min-severity: medium
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: ${{ steps.skills.outputs.sarif-dir }}
+```
+
+Входы: `skills` (по умолчанию `secret-scanner,sast-lite`; доступны
+`secret-scanner`, `sast-lite`, `dependency-check`, `dockerfile-scan`), `path`
+(по умолчанию `.`), `min-severity` (для `sast-lite` и `dependency-check`) и
+`sarif` (по умолчанию `true`). Выходы: `findings` с числом находок и
+`sarif-dir`. Находка роняет шаг, как и у самих движков. SARIF от
+`secret-scanner` не содержит ни секрета, ни строки, где он лежит, только файл,
+строку и колонку: этот файл уходит в GitHub.
+
+Без экшена движки можно звать напрямую: это те же самые файлы, которые
+запускает Claude. Ставить нечего, так что шага `pip install` здесь нет:
 
 ```yaml
 name: security
@@ -143,7 +179,7 @@ pip install pytest
 pytest skills/ -q
 ```
 
-227 тестов, все офлайн, отрабатывают меньше чем за секунду.
+241 тест, все офлайн, отрабатывают меньше чем за секунду.
 
 ## На чём это построено
 
