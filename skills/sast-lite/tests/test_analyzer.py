@@ -261,3 +261,48 @@ def test_request_timeout_sarif_metadata():
 def test_reassigned_session_is_not_treated_as_requests():
     src = "import requests\nclient = requests.Session()\nclient = cache\nclient.get(key)"
     assert "py.request-no-timeout" not in ids(src)
+
+
+@pytest.mark.parametrize("call", [
+    "urllib.request.urlopen(url)",
+    "request.urlopen(url, timeout=None)",
+    "open_url(url)",
+])
+def test_urllib_without_timeout_flagged(call):
+    src = (
+        "import urllib.request\n"
+        "from urllib import request\n"
+        "from urllib.request import urlopen as open_url\n"
+        f"{call}"
+    )
+    assert "py.request-no-timeout" in ids(src)
+
+
+@pytest.mark.parametrize("call", [
+    "urllib.request.urlopen(url, timeout=5)",
+    "urllib.request.urlopen(url, None, 5)",
+    "urllib.request.urlopen(url, **kwargs)",
+])
+def test_urllib_with_timeout_or_unknown_kwargs_not_flagged(call):
+    assert "py.request-no-timeout" not in ids(f"import urllib.request\n{call}")
+
+
+@pytest.mark.parametrize("call", [
+    "httpx.get(url, timeout=None)",
+    "httpx.Client(timeout=None)",
+    "httpx.AsyncClient(timeout=None)",
+    "client.get(url, timeout=None)",
+])
+def test_httpx_explicitly_disabled_timeout_flagged(call):
+    src = f"import httpx\nclient = httpx.Client()\n{call}"
+    assert "py.request-no-timeout" in ids(src)
+
+
+@pytest.mark.parametrize("call", [
+    "httpx.get(url)",
+    "httpx.Client()",
+    "httpx.AsyncClient(timeout=5)",
+    "httpx.get(url, timeout=None, **kwargs)",
+])
+def test_httpx_defaults_finite_timeout_and_skips_unknown_kwargs(call):
+    assert "py.request-no-timeout" not in ids(f"import httpx\n{call}")

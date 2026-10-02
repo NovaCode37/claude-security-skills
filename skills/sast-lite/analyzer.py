@@ -103,6 +103,10 @@ class SecurityVisitor(ast.NodeVisitor):
         self.os_shell_funcs: set[str] = set()
         self.requests_aliases: set[str] = {"requests"}
         self.requests_sessions: set[str] = set()
+        self.urllib_request_aliases: set[str] = {"urllib.request"}
+        self.urlopen_funcs: set[str] = set()
+        self.httpx_aliases: set[str] = {"httpx"}
+        self.httpx_clients: set[str] = set()
 
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
@@ -110,6 +114,10 @@ class SecurityVisitor(ast.NodeVisitor):
                 self.os_aliases.add(alias.asname or "os")
             elif alias.name == "requests":
                 self.requests_aliases.add(alias.asname or "requests")
+            elif alias.name == "urllib.request":
+                self.urllib_request_aliases.add(alias.asname or "urllib.request")
+            elif alias.name == "httpx":
+                self.httpx_aliases.add(alias.asname or "httpx")
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
@@ -117,6 +125,14 @@ class SecurityVisitor(ast.NodeVisitor):
             for alias in node.names:
                 if alias.name in OS_SHELL_FUNCS:
                     self.os_shell_funcs.add(alias.asname or alias.name)
+        elif node.module == "urllib":
+            for alias in node.names:
+                if alias.name == "request":
+                    self.urllib_request_aliases.add(alias.asname or "request")
+        elif node.module == "urllib.request":
+            for alias in node.names:
+                if alias.name == "urlopen":
+                    self.urlopen_funcs.add(alias.asname or "urlopen")
         self.generic_visit(node)
 
     def _is_os_shell_call(self, target: str) -> bool:
@@ -131,6 +147,14 @@ class SecurityVisitor(ast.NodeVisitor):
         if isinstance(node, ast.Call):
             head, _, name = _attr_chain(node.func).rpartition(".")
             return head in self.requests_aliases and name in ("Session", "session")
+        return False
+
+    def _is_httpx_client(self, node: ast.AST) -> bool:
+        if isinstance(node, ast.Name):
+            return node.id in self.httpx_clients
+        if isinstance(node, ast.Call):
+            head, _, name = _attr_chain(node.func).rpartition(".")
+            return head in self.httpx_aliases and name in ("Client", "AsyncClient")
         return False
 
     def _add(self, node: ast.AST, rule_id: str, cwe: str, msg: str, sev: str):
@@ -159,6 +183,37 @@ class SecurityVisitor(ast.NodeVisitor):
                     timeout is None or isinstance(timeout, ast.Constant) and timeout.value is None):
                 self._add(node, "py.request-no-timeout", "CWE-400",
                           "HTTP request has no timeout; a stalled server can "
+                          "block indefinitely. Set a finite timeout.", "medium")
+
+            is_httpx = (
+                isinstance(receiver, ast.Name) and receiver.id in self.httpx_aliases
+            ) or self._is_httpx_client(receiver)
+            has_timeout = any(kw.arg == "timeout" for kw in node.keywords)
+            if is_httpx and not unknown_kwargs and has_timeout and isinstance(
+                    timeout, ast.Constant) and timeout.value is None:
+                self._add(node, "py.request-no-timeout", "CWE-400",
+                          "HTTP request disables its timeout; a stalled server can "
+                          "block indefinitely. Set a finite timeout.", "medium")
+
+        unknown_kwargs = any(kw.arg is None for kw in node.keywords)
+        is_urlopen = target in self.urlopen_funcs or any(
+            target == f"{alias}.urlopen" for alias in self.urllib_request_aliases
+        )
+        if is_urlopen and not unknown_kwargs:
+            timeout = _kw(node, "timeout")
+            if timeout is None and len(node.args) >= 3:
+                timeout = node.args[2]
+            if timeout is None or isinstance(timeout, ast.Constant) and timeout.value is None:
+                self._add(node, "py.request-no-timeout", "CWE-400",
+                          "HTTP request has no timeout; a stalled server can "
+                          "block indefinitely. Set a finite timeout.", "medium")
+
+        if self._is_httpx_client(node) and not unknown_kwargs:
+            timeout = _kw(node, "timeout")
+            has_timeout = any(kw.arg == "timeout" for kw in node.keywords)
+            if has_timeout and isinstance(timeout, ast.Constant) and timeout.value is None:
+                self._add(node, "py.request-no-timeout", "CWE-400",
+                          "HTTP client disables its timeout; a stalled server can "
                           "block indefinitely. Set a finite timeout.", "medium")
 
         if target in ("eval", "exec") or last in ("eval", "exec"):
@@ -257,12 +312,17 @@ class SecurityVisitor(ast.NodeVisitor):
 
     def visit_Assign(self, node: ast.Assign):
         is_session = self._is_requests_session(node.value)
+        is_httpx_client = self._is_httpx_client(node.value)
         for tgt in node.targets:
             if isinstance(tgt, ast.Name):
                 if is_session:
                     self.requests_sessions.add(tgt.id)
                 else:
                     self.requests_sessions.discard(tgt.id)
+                if is_httpx_client:
+                    self.httpx_clients.add(tgt.id)
+                else:
+                    self.httpx_clients.discard(tgt.id)
         if _is_string_constant(node.value) and node.value.value:
             for tgt in node.targets:
                 name = tgt.id if isinstance(tgt, ast.Name) else (
