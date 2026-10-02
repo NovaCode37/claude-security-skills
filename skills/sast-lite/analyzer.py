@@ -278,6 +278,92 @@ def analyze_source(source: str, path: str = "<string>") -> list[Issue]:
     return visitor.issues
 
 
+INFORMATION_URI = "https://github.com/NovaCode37/claude-security-skills"
+
+SARIF_LEVEL = {"critical": "error", "high": "error", "medium": "warning",
+               "low": "warning", "info": "note"}
+
+SECURITY_SEVERITY = {"critical": "9.5", "high": "8.0", "medium": "5.5",
+                     "low": "3.0"}
+
+RULE_TITLES = {
+    "py.eval-exec": "Use of eval() or exec()",
+    "py.compile": "compile() of dynamic source",
+    "py.os-system": "Shell command through os.system or os.popen",
+    "py.subprocess-shell": "subprocess called with shell=True",
+    "py.insecure-deserialization": "Unsafe deserialization",
+    "py.yaml-load": "yaml.load() without SafeLoader",
+    "py.weak-hash": "Weak hash (MD5 or SHA-1)",
+    "py.tls-verify-disabled": "TLS certificate verification disabled",
+    "py.insecure-temp": "Race-prone temporary file",
+    "py.flask-debug": "Flask debug mode",
+    "py.jinja-autoescape": "Jinja2 autoescape disabled",
+    "py.sql-injection": "SQL query built from strings",
+    "py.hardcoded-secret": "Hardcoded secret",
+    "py.insecure-random": "Non-cryptographic random used for a secret",
+    "py.assert-security": "assert used for a security check",
+    "py.syntax-error": "File could not be parsed",
+}
+
+
+def _sarif_uri(path: str) -> str:
+    if os.path.isabs(path):
+        try:
+            path = os.path.relpath(path)
+        except ValueError:
+            pass
+    path = path.replace(os.sep, "/")
+    while path.startswith("./"):
+        path = path[2:]
+    return path
+
+
+def to_sarif(issues: list[Issue]) -> dict:
+    rules: list[dict] = []
+    index: dict[str, int] = {}
+    results: list[dict] = []
+    for issue in issues:
+        if issue.rule_id not in index:
+            index[issue.rule_id] = len(rules)
+            properties: dict = {"tags": ["security"]}
+            if issue.cwe and issue.cwe != "CWE-000":
+                properties["tags"].append(
+                    "external/cwe/" + issue.cwe.lower())
+            if issue.severity in SECURITY_SEVERITY:
+                properties["security-severity"] = SECURITY_SEVERITY[issue.severity]
+            rules.append({
+                "id": issue.rule_id,
+                "shortDescription": {
+                    "text": RULE_TITLES.get(issue.rule_id, issue.rule_id)},
+                "properties": properties,
+            })
+        location: dict = {"artifactLocation": {"uri": _sarif_uri(issue.path)}}
+        if issue.line >= 1:
+            region: dict = {"startLine": issue.line}
+            if issue.col >= 1:
+                region["startColumn"] = issue.col
+            if issue.snippet:
+                region["snippet"] = {"text": issue.snippet}
+            location["region"] = region
+        results.append({
+            "ruleId": issue.rule_id,
+            "ruleIndex": index[issue.rule_id],
+            "level": SARIF_LEVEL.get(issue.severity, "warning"),
+            "message": {"text": issue.message},
+            "locations": [{"physicalLocation": location}],
+        })
+    return {
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {"driver": {"name": "sast-lite",
+                                "informationUri": INFORMATION_URI,
+                                "rules": rules}},
+            "results": results,
+        }],
+    }
+
+
 def iter_py_files(paths: Iterable[str]) -> Iterator[str]:
     for root in paths:
         if os.path.isfile(root):
@@ -341,7 +427,10 @@ def main(argv: list[str] | None = None) -> int:
         prog="sast-lite",
         description="Lightweight AST-based Python security analyzer.")
     p.add_argument("paths", nargs="+", help="files or directories to scan")
-    p.add_argument("--json", action="store_true", help="emit JSON")
+    fmt = p.add_mutually_exclusive_group()
+    fmt.add_argument("--json", action="store_true", help="emit JSON")
+    fmt.add_argument("--sarif", action="store_true",
+                     help="emit SARIF 2.1.0 for GitHub code scanning")
     p.add_argument("--min-severity", default="info",
                    choices=list(SEVERITY_RANK),
                    help="report issues at or above this severity "
@@ -354,7 +443,9 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     issues = analyze_paths(args.paths, min_severity=args.min_severity)
-    if args.json:
+    if args.sarif:
+        print(json.dumps(to_sarif(issues), indent=2))
+    elif args.json:
         print(json.dumps([i.to_dict() for i in issues], indent=2))
     else:
         print(render_pretty(issues))

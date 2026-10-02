@@ -256,6 +256,70 @@ def _supports_color() -> bool:
     return sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
 
 
+INFORMATION_URI = "https://github.com/NovaCode37/claude-security-skills"
+
+SARIF_LEVEL = {"critical": "error", "high": "error", "medium": "warning",
+               "low": "warning", "info": "note"}
+
+SECURITY_SEVERITY = {"critical": "9.5", "high": "8.0", "medium": "5.5",
+                     "low": "3.0"}
+
+
+def _sarif_uri(path: str) -> str:
+    if os.path.isabs(path):
+        try:
+            path = os.path.relpath(path)
+        except ValueError:
+            pass
+    path = path.replace(os.sep, "/")
+    while path.startswith("./"):
+        path = path[2:]
+    return path
+
+
+def to_sarif(findings: list[Finding]) -> dict:
+    rules: list[dict] = []
+    index: dict[str, int] = {}
+    results: list[dict] = []
+    for f in findings:
+        if f.rule_id not in index:
+            index[f.rule_id] = len(rules)
+            properties: dict = {"tags": ["security", "secret",
+                                         "external/cwe/cwe-798"]}
+            if f.severity in SECURITY_SEVERITY:
+                properties["security-severity"] = SECURITY_SEVERITY[f.severity]
+            rules.append({
+                "id": f.rule_id,
+                "shortDescription": {"text": f.description},
+                "properties": properties,
+            })
+        region: dict = {"startLine": max(f.line, 1)}
+        if f.column >= 1:
+            region["startColumn"] = f.column
+        results.append({
+            "ruleId": f.rule_id,
+            "ruleIndex": index[f.rule_id],
+            "level": SARIF_LEVEL.get(f.severity, "warning"),
+            "message": {"text": f"Possible {f.description} committed to the "
+                                "repository. Rotate it, then remove it from "
+                                "history."},
+            "locations": [{"physicalLocation": {
+                "artifactLocation": {"uri": _sarif_uri(f.path)},
+                "region": region,
+            }}],
+        })
+    return {
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {"driver": {"name": "secret-scanner",
+                                "informationUri": INFORMATION_URI,
+                                "rules": rules}},
+            "results": results,
+        }],
+    }
+
+
 def render_pretty(findings: list[Finding]) -> str:
     if not findings:
         return "[secret-scanner] No secrets detected. [OK]"
@@ -281,7 +345,10 @@ def main(argv: list[str] | None = None) -> int:
         prog="secret-scanner",
         description="Detect hardcoded secrets via regex rules + entropy analysis.")
     parser.add_argument("paths", nargs="+", help="files or directories to scan")
-    parser.add_argument("--json", action="store_true", help="emit JSON")
+    fmt = parser.add_mutually_exclusive_group()
+    fmt.add_argument("--json", action="store_true", help="emit JSON")
+    fmt.add_argument("--sarif", action="store_true",
+                     help="emit SARIF 2.1.0 for GitHub code scanning")
     parser.add_argument("--min-entropy", type=float, default=3.5,
                         help="entropy threshold for generic rules (default 3.5)")
     parser.add_argument("--no-entropy", action="store_true",
@@ -302,7 +369,9 @@ def main(argv: list[str] | None = None) -> int:
         include_tests=args.include_tests,
     )
 
-    if args.json:
+    if args.sarif:
+        print(json.dumps(to_sarif(findings), indent=2))
+    elif args.json:
         print(json.dumps([f.to_dict() for f in findings], indent=2))
     else:
         print(render_pretty(findings))

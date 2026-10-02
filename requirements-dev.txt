@@ -1,3 +1,4 @@
 # Development / CI dependencies only.
 # The skills themselves have ZERO runtime dependencies (stdlib only).
 pytest>=7.0
+jsonschema>=4.0
