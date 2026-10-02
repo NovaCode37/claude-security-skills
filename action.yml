@@ -1,0 +1,45 @@
+name: Claude Security Skills
+description: Secret scanning, Python SAST, Dockerfile and dependency checks in plain Python, with SARIF for code scanning.
+author: NovaCode37
+
+branding:
+  icon: shield
+  color: purple
+
+inputs:
+  skills:
+    description: Comma-separated engines to run. Available here are secret-scanner, sast-lite, dependency-check and dockerfile-scan.
+    required: false
+    default: secret-scanner,sast-lite
+  path:
+    description: Path to scan, relative to the workspace. Space-separated for several.
+    required: false
+    default: .
+  min-severity:
+    description: Report findings at or above this severity (critical, high, medium, low, info). Applies to sast-lite and dependency-check.
+    required: false
+    default: info
+  sarif:
+    description: Write SARIF for the engines that support it, for github/codeql-action/upload-sarif.
+    required: false
+    default: "true"
+
+outputs:
+  findings:
+    description: Total number of findings across the engines that ran.
+    value: ${{ steps.scan.outputs.findings }}
+  sarif-dir:
+    description: Directory with one SARIF file per engine, empty when sarif is false.
+    value: ${{ steps.scan.outputs.sarif-dir }}
+
+runs:
+  using: composite
+  steps:
+    - id: scan
+      shell: bash
+      env:
+        INPUT_SKILLS: ${{ inputs.skills }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_MIN_SEVERITY: ${{ inputs.min-severity }}
+        INPUT_SARIF: ${{ inputs.sarif }}
+      run: python3 "$GITHUB_ACTION_PATH/action/run.py"

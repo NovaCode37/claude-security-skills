@@ -1,0 +1,60 @@
+name: action self-test
+
+on:
+  push:
+    branches: [main]
+    paths: ["action.yml", "action/**", "skills/**", ".github/workflows/action-selftest.yml"]
+  pull_request:
+    paths: ["action.yml", "action/**", "skills/**", ".github/workflows/action-selftest.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  finding-fails-the-step:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: scan
+        uses: ./
+        continue-on-error: true
+        with:
+          skills: sast-lite
+          path: action/testdata/vulnerable
+      - name: The step failed and reported the finding
+        env:
+          OUTCOME: ${{ steps.scan.outcome }}
+          FINDINGS: ${{ steps.scan.outputs.findings }}
+          SARIF_DIR: ${{ steps.scan.outputs.sarif-dir }}
+        run: |
+          test "$OUTCOME" = "failure"
+          test "$FINDINGS" -ge 1
+          python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['version']=='2.1.0' and d['runs'][0]['results']" "$SARIF_DIR/sast-lite.sarif"
+
+  clean-code-passes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: scan
+        uses: ./
+        with:
+          skills: secret-scanner,sast-lite
+          path: action/testdata/clean
+      - name: No findings reported
+        env:
+          FINDINGS: ${{ steps.scan.outputs.findings }}
+        run: test "$FINDINGS" = "0"
+
+  unknown-skill-is-rejected:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: scan
+        uses: ./
+        continue-on-error: true
+        with:
+          skills: secret-scaner
+      - name: The typo failed the step
+        env:
+          OUTCOME: ${{ steps.scan.outcome }}
+        run: test "$OUTCOME" = "failure"
