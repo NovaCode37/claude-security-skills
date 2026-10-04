@@ -39,7 +39,7 @@ línea exacta del diff del pull request. Detalles en el [changelog](CHANGELOG.md
 | Habilidad | Qué hace | Motor |
 |-----------|----------|-------|
 | [secret-scanner](skills/secret-scanner) | Encuentra llaves de API, tokens y claves privadas escritas en el código, combinando patrones de proveedores con análisis de entropía de Shannon, ajustado para dar pocos falsos positivos | Motor de entropía propio |
-| [sast-lite](skills/sast-lite) | Análisis estático de Python sobre el AST: inyección de comandos, eval/exec, deserialización insegura, SQLi, criptografía débil, TLS desactivado — cada hallazgo con su CWE | Recorrido del AST |
+| [sast-lite](skills/sast-lite) | Análisis estático de Python sobre el AST: inyección de comandos, eval/exec, deserialización insegura, SQLi, criptografía débil, TLS desactivado, cada hallazgo con su CWE | Recorrido del AST |
 | [prompt-injection-tester](skills/prompt-injection-tester) | Somete tu propia aplicación LLM a una biblioteca de payloads clasificados con detección de canarios, y puntúa la resistencia de 0 a 100 | Harness de canarios |
 | [http-sec-audit](skills/http-sec-audit) | Revisa las cabeceras de seguridad HTTP y los flags de las cookies (CSP, HSTS, SameSite y demás) e indica qué corregir | urllib |
 | [jwt-inspector](skills/jwt-inspector) | Decodifica y audita JWT (alg=none, expiración demasiado larga, higiene de claims) y descifra secretos HMAC débiles sin conexión | HMAC y comprobaciones |
@@ -212,7 +212,7 @@ convenciones.
 
 ## También de este proyecto
 
-[PRISM](https://github.com/NovaCode37/Prism-platform) — una plataforma OSINT autoalojada con panel web: dominios, IPs, correos, teléfonos y nombres de usuario en más de 22 módulos, con puntuación de exposición, grafo de entidades e informes en HTML y PDF.
+[PRISM](https://github.com/NovaCode37/Prism-platform) es una plataforma OSINT autoalojada con panel web: dominios, IPs, correos, teléfonos y nombres de usuario en 26 módulos, con puntuación de exposición, grafo de entidades e informes en HTML y PDF.
 
 ## Aspectos legales
 

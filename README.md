@@ -10,7 +10,7 @@ review Python code, red-team an LLM for prompt injection, or audit HTTP headers,
 JWTs, Dockerfiles, CORS, and dependencies. Claude picks the right skill, runs
 it, and explains what it found.
 
-Everything here runs on the Python standard library — no packages to install,
+Everything here runs on the Python standard library: no packages to install,
 nothing phoning home. The analysis runs offline; only the few skills that need
 to hit a URL use the network, and only when you ask them to.
 
@@ -38,8 +38,8 @@ the [changelog](CHANGELOG.md).
 | Skill | What it does | Engine |
 |-------|--------------|--------|
 | [secret-scanner](skills/secret-scanner) | Finds hardcoded API keys, tokens and private keys using vendor patterns plus Shannon-entropy analysis, tuned for few false positives | Custom entropy engine |
-| [sast-lite](skills/sast-lite) | AST-based static analysis for Python: command injection, eval/exec, insecure deserialization, SQLi, weak crypto, disabled TLS — each tagged with a CWE | Python `ast` walker |
-| [prompt-injection-tester](skills/prompt-injection-tester) | Red-teams your own LLM app with a categorized payload library and canary detection, then scores resilience 0–100 | Canary harness |
+| [sast-lite](skills/sast-lite) | AST-based static analysis for Python: command injection, eval/exec, insecure deserialization, SQLi, weak crypto, disabled TLS, each tagged with a CWE | Python `ast` walker |
+| [prompt-injection-tester](skills/prompt-injection-tester) | Red-teams your own LLM app with a categorized payload library and canary detection, then scores resilience 0-100 | Canary harness |
 | [http-sec-audit](skills/http-sec-audit) | Checks HTTP security headers and cookie flags (CSP, HSTS, SameSite, …) and gives concrete fixes | urllib + pure core |
 | [jwt-inspector](skills/jwt-inspector) | Decodes and audits JWTs (alg=none, weak expiry, claim hygiene) and cracks weak HMAC secrets offline | HMAC + checks |
 | [dependency-check](skills/dependency-check) | Flags known-vulnerable and unpinned deps in `requirements.txt`, `package.json` and `pyproject.toml`; offline DB plus optional OSV.dev | Version matcher |
@@ -47,7 +47,7 @@ the [changelog](CHANGELOG.md).
 | [cors-auditor](skills/cors-auditor) | Audits CORS config for wildcard-with-credentials, reflected origins, `null` origin and overly broad methods | Header analyzer |
 
 Each skill is self-contained, has its own tests, and exits non-zero when it
-finds something — so it also works as a CI step.
+finds something, so it also works as a CI step.
 
 ## Install
 
@@ -244,7 +244,7 @@ land one without reading the whole codebase first.
 
 ## Also from this project
 
-[PRISM](https://github.com/NovaCode37/Prism-platform) — a self-hosted OSINT platform with a web dashboard: domains, IPs, emails, phone numbers and usernames across 22+ modules, with an exposure score, entity graph and HTML/PDF reports.
+[PRISM](https://github.com/NovaCode37/Prism-platform) is a self-hosted OSINT platform with a web dashboard. It checks domains, IPs, emails, phone numbers and usernames across 26 modules, with an exposure score, entity graph and HTML/PDF reports.
 
 ## Legal
 
