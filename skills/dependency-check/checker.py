@@ -36,6 +36,16 @@ ADVISORIES = {
         "node-fetch": [("<2.6.7", "CVE-2022-0235", "medium",
                         "node-fetch < 2.6.7 leaks cookies/Authorization on redirect.")],
     },
+    "go": {
+        "golang.org/x/crypto": [
+            (
+                "<v0.0.0-20220314234659-1baeb1ce4c0b",
+                "CVE-2022-27191",
+                "high",
+                "golang.org/x/crypto/ssh crash via crafted packets.",
+            )
+        ],
+    },
 }
 
 @dataclass
@@ -152,6 +162,69 @@ def parse_package_json(text: str) -> list[Dep]:
             deps.append(Dep("npm", name.lower(), ver, f"{name}: {spec}", pinned))
     return deps
 
+def parse_go_mod(text: str) -> list[Dep]:
+    deps: list[Dep] = []
+    in_require_block = False
+
+    for line in text.splitlines():
+        line = line.strip()
+
+        if not line or line.startswith("//"):
+            continue
+
+        if "// indirect" in line:
+            continue
+
+        if line == "require (":
+            in_require_block = True
+            continue
+
+        if line.startswith("require "):
+            parts = line.split()
+        
+            if len(parts) >= 3:
+                name = parts[1]
+                version = parts[2]
+        
+                deps.append(
+                    Dep(
+                        ecosystem="go",
+                        name=name,
+                        version=version,
+                        raw=line,
+                        pinned=True,
+                    )
+                )
+        
+            continue
+
+        if in_require_block and line == ")":
+            in_require_block = False
+            continue
+
+        if not in_require_block:
+            continue
+
+        parts = line.split()
+
+        if len(parts) < 2:
+            continue
+
+        name = parts[0]
+        version = parts[1]
+
+        deps.append(
+            Dep(
+                ecosystem="go",
+                name=name,
+                version=version,
+                raw=line,
+                pinned=True,
+            )
+        )
+
+    return deps
+
 def check_offline(deps: list[Dep]) -> list[Finding]:
     findings: list[Finding] = []
     for dep in deps:
@@ -168,7 +241,7 @@ def check_offline(deps: list[Dep]) -> list[Finding]:
 def check_online_osv(deps: list[Dep], timeout: float = 10.0) -> list[Finding]:
     import urllib.request
 
-    eco_map = {"pypi": "PyPI", "npm": "npm"}
+    eco_map = {"pypi": "PyPI", "npm": "npm", "go": "Go"}
     findings: list[Finding] = []
     for dep in deps:
         if not dep.version:
@@ -223,6 +296,8 @@ def parse_file(path: str) -> list[Dep]:
         return parse_package_json(text)
     if base == "pyproject.toml":
         return parse_pyproject_toml(text)
+    if base == "go.mod":
+        return parse_go_mod(text)
     if base.endswith(".txt") or "requirements" in base:
         return parse_requirements(text)
     return parse_requirements(text)
@@ -231,7 +306,7 @@ def discover(path: str) -> list[str]:
     if os.path.isfile(path):
         return [path]
     found = []
-    for name in ("requirements.txt", "package.json", "pyproject.toml"):
+    for name in ("requirements.txt", "package.json", "pyproject.toml", "go.mod"):
         candidate = os.path.join(path, name)
         if os.path.isfile(candidate):
             found.append(candidate)
