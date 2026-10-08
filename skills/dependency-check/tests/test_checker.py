@@ -82,6 +82,143 @@ def test_parse_package_json():
 def test_parse_package_json_invalid():
     assert checker.parse_package_json("{not json") == []
 
+def test_parse_go_mod_require_block():
+    go_mod = """
+    module example.com/myapp
+
+    go 1.21
+
+    require (
+        github.com/gin-gonic/gin v1.9.0
+        golang.org/x/crypto v0.14.0
+    )
+    """
+
+    deps = checker.parse_go_mod(go_mod)
+
+    assert len(deps) == 2
+
+    gin = next(d for d in deps if d.name == "github.com/gin-gonic/gin")
+    assert gin.ecosystem == "go"
+    assert gin.version == "v1.9.0"
+    assert gin.pinned
+
+    crypto = next(d for d in deps if d.name == "golang.org/x/crypto")
+    assert crypto.version == "v0.14.0"
+    assert crypto.pinned
+
+def test_parse_go_mod_single_require():
+    go_mod = """
+    module example.com/myapp
+
+    go 1.21
+
+    require github.com/gin-gonic/gin v1.9.0
+    """
+
+    deps = checker.parse_go_mod(go_mod)
+
+    assert len(deps) == 1
+
+    gin = deps[0]
+    assert gin.ecosystem == "go"
+    assert gin.name == "github.com/gin-gonic/gin"
+    assert gin.version == "v1.9.0"
+    assert gin.pinned
+
+def test_parse_go_mod_skips_indirect_dependencies():
+    go_mod = """
+    module example.com/myapp
+
+    require (
+        github.com/gin-gonic/gin v1.9.0
+        golang.org/x/crypto v0.14.0 // indirect
+    )
+
+    require github.com/stretchr/testify v1.8.4 // indirect
+    """
+
+    deps = checker.parse_go_mod(go_mod)
+
+    assert len(deps) == 1
+    assert deps[0].name == "github.com/gin-gonic/gin"
+
+def test_parse_go_mod_pseudo_version():
+    go_mod = """
+    require (
+        golang.org/x/example v0.0.0-20191109021931-daa7c04131f5
+    )
+    """
+
+    deps = checker.parse_go_mod(go_mod)
+
+    assert len(deps) == 1
+    assert deps[0].name == "golang.org/x/example"
+    assert deps[0].version == "v0.0.0-20191109021931-daa7c04131f5"
+    assert deps[0].pinned
+
+def test_go_pseudo_version_comparison():
+    pseudo = "v0.0.0-20191109021931-daa7c04131f5"
+
+    assert checker.version_matches(pseudo, "<v0.0.1")
+
+def test_run_directory_with_go_mod(tmp_path):
+    (tmp_path / "go.mod").write_text(
+        """
+        module example.com/myapp
+
+        go 1.21
+
+        require (
+            github.com/gin-gonic/gin v1.9.0
+        )
+        """
+    )
+
+    result = checker.run(str(tmp_path))
+
+    assert result["dependency_count"] == 1
+    assert len(result["files"]) == 1
+    assert result["files"][0].endswith("go.mod")
+
+def test_vulnerable_go_dependency_detected():
+    deps = checker.parse_go_mod(
+        """
+        require (
+            golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
+        )
+        """
+    )
+
+    findings = checker.check_offline(deps)
+
+    assert any(f.id == "CVE-2022-27191" for f in findings)
+
+def test_parse_go_mod_skips_comments():
+    go_mod = """
+    require (
+        // Direct dependencies
+        github.com/gin-gonic/gin v1.9.0
+    )
+    """
+
+    deps = checker.parse_go_mod(go_mod)
+
+    assert len(deps) == 1
+    assert deps[0].name == "github.com/gin-gonic/gin"
+    
+def test_safe_go_dependency_not_detected():
+    deps = checker.parse_go_mod(
+        """
+        require (
+            golang.org/x/crypto v0.17.0
+        )
+        """
+    )
+
+    findings = checker.check_offline(deps)
+
+    assert not any(f.id == "CVE-2022-27191" for f in findings)
 
 def test_vulnerable_flask_detected():
     deps = checker.parse_requirements("flask==0.12.2\n")
