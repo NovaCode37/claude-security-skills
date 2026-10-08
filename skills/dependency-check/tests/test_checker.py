@@ -27,6 +27,58 @@ def test_version_matches():
     assert checker.version_matches("2.0.0", ">=1.0.0")
 
 
+
+@pytest.mark.parametrize("version,release", [
+    ("1.2.3rc1", "1.2.3"),
+    ("1.2.3-rc.1", "1.2.3"),
+    ("2.0.0b1", "2.0.0"),
+    ("1.2.3a1", "1.2.3"),
+    ("1.2.3.dev1", "1.2.3"),
+    ("1.2.3-beta", "1.2.3"),
+    ("v0.3.1-0.20220314000000-abcdef123456", "v0.3.1"),
+])
+def test_prerelease_precedes_release(version, release):
+    assert checker.version_matches(version, "<" + release)
+    assert not checker.version_matches(version, ">=" + release)
+    assert checker.version_matches(release, ">" + version)
+    assert not checker.version_matches(version, "==" + release)
+
+
+@pytest.mark.parametrize("older,newer", [
+    ("1.2.3.dev1", "1.2.3a1"),
+    ("1.2.3a1", "1.2.3b1"),
+    ("1.2.3b1", "1.2.3rc1"),
+    ("1.2.3rc2", "1.2.3rc10"),
+    ("1.2.3rc1.dev1", "1.2.3rc1"),
+    ("1.2.3-alpha", "1.2.3-beta"),
+    ("1.2.3-rc.2", "1.2.3-rc.10"),
+    ("1.2.3-1", "1.2.3-alpha"),
+    ("v0.0.0-20201216223049-8b5274cf687f",
+     "v0.0.0-20220314234659-1baeb1ce4c0b"),
+])
+def test_prerelease_ordering(older, newer):
+    assert checker.version_matches(older, "<" + newer)
+    assert checker.version_matches(newer, ">" + older)
+
+
+def test_prerelease_uses_release_components_first():
+    assert checker.version_matches("1.2.3rc1", ">1.2.2")
+    assert checker.version_matches("1.2.3", "<1.2.4rc1")
+
+
+def test_semver_build_metadata_does_not_change_precedence():
+    assert checker.version_matches("1.2.3+build.99", "==1.2.3")
+    assert checker.version_matches("1.2.3-rc.1+build.99", "==1.2.3-rc.1")
+
+
+def test_offline_prerelease_vulnerability_and_fixed_release():
+    for version in ("0.12.3rc1", "0.12.3.dev1"):
+        findings = checker.check_offline(
+            checker.parse_requirements("flask==" + version))
+        assert any(f.id == "CVE-2018-1000656" for f in findings)
+    assert checker.check_offline(checker.parse_requirements("flask==0.12.3")) == []
+
+
 def test_parse_requirements_pinned():
     deps = checker.parse_requirements("flask==0.12.2\nrequests>=2.0\n# comment\n")
     flask = next(d for d in deps if d.name == "flask")
