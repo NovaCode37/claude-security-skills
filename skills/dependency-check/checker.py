@@ -65,11 +65,41 @@ def _norm(v: str) -> tuple:
     return tuple(int(n) for n in nums) if nums else (0,)
 
 def _cmp(a: str, b: str) -> int:
-    ta, tb = _norm(a), _norm(b)
+    # Separate release digits from prereleases before comparing numeric parts.
+    pattern = r"^[vV]?(\d+(?:\.\d+)*)(.*)$"
+    ma, mb = re.match(pattern, a.strip()), re.match(pattern, b.strip())
+    ta, tb = _norm(ma.group(1) if ma else a), _norm(mb.group(1) if mb else b)
     length = max(len(ta), len(tb))
     ta += (0,) * (length - len(ta))
     tb += (0,) * (length - len(tb))
-    return (ta > tb) - (ta < tb)
+    release_cmp = (ta > tb) - (ta < tb)
+    if release_cmp or not (ma and mb):
+        return release_cmp
+
+    def suffix_key(suffix: str) -> tuple:
+        # SemVer build metadata does not participate in precedence.
+        suffix = suffix.split("+", 1)[0]
+        if not suffix:
+            return (1,)
+        if suffix.startswith("-"):
+            # SemVer numeric identifiers precede text identifiers; comparing
+            # identifiers individually also preserves Go pseudo-version dates.
+            identifiers = tuple(
+                (0, int(part)) if part.isdigit() else (1, part)
+                for part in suffix[1:].split(".")
+            )
+            return (0, identifiers)
+        pep = re.fullmatch(
+            r"[._]?(a|b|rc|dev)(\d*)(?:\.dev(\d+))?", suffix, re.IGNORECASE)
+        if pep:
+            stage = {"dev": 0, "a": 1, "b": 2, "rc": 3}[pep.group(1).lower()]
+            dev = (0, int(pep.group(3))) if pep.group(3) is not None else (1, 0)
+            return (0, ((0, stage), (0, int(pep.group(2) or 0)), dev))
+        # Preserve the existing numeric fallback for unsupported suffixes.
+        return (1, _norm(suffix))
+
+    sa, sb = suffix_key(ma.group(2)), suffix_key(mb.group(2))
+    return (sa > sb) - (sa < sb)
 
 def version_matches(version: str, spec: str) -> bool:
     m = re.match(r"\s*(<=|>=|==|<|>)\s*(.+)\s*$", spec)
